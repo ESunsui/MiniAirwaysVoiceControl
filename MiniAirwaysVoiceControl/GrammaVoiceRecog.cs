@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.Speech.Recognition;
+using static SpeechRecognitionApp.GrammaVoiceRecog;
 
 namespace SpeechRecognitionApp
 {
@@ -24,16 +25,26 @@ namespace SpeechRecognitionApp
             recognizer.LoadGrammar(new DictationGrammar());
 
             // Add a handler for the speech recognized event.  
-            recognizer.SpeechRecognized +=
-              new EventHandler<SpeechRecognizedEventArgs>(recognizer_SpeechRecognized);
 
+            recognizer.SpeechDetected +=
+            new EventHandler<SpeechDetectedEventArgs>(
+                SpeechDetectedHandler);
+            recognizer.SpeechHypothesized +=
+              new EventHandler<SpeechHypothesizedEventArgs>(
+                SpeechHypothesizedHandler);
+            recognizer.SpeechRecognitionRejected +=
+              new EventHandler<SpeechRecognitionRejectedEventArgs>(
+                SpeechRecognitionRejectedHandler);
+            recognizer.SpeechRecognized +=
+              new EventHandler<SpeechRecognizedEventArgs>(
+                SpeechRecognizedHandler);
             recognizer.RecognizeCompleted +=
-                new EventHandler<RecognizeCompletedEventArgs>(recognizer_RecognizeCompleted);
+              new EventHandler<RecognizeCompletedEventArgs>(
+                RecognizeCompletedHandler);
 
             // Configure input to the speech recognizer.  
             recognizer.SetInputToDefaultAudioDevice();
         }
-
 
         public void Init(string language, Grammar grammar)
         {
@@ -48,11 +59,21 @@ namespace SpeechRecognitionApp
             }
 
             // Add a handler for the speech recognized event.  
+            recognizer.SpeechDetected +=
+            new EventHandler<SpeechDetectedEventArgs>(
+                SpeechDetectedHandler);
+            recognizer.SpeechHypothesized +=
+              new EventHandler<SpeechHypothesizedEventArgs>(
+                SpeechHypothesizedHandler);
+            recognizer.SpeechRecognitionRejected +=
+              new EventHandler<SpeechRecognitionRejectedEventArgs>(
+                SpeechRecognitionRejectedHandler);
             recognizer.SpeechRecognized +=
-              new EventHandler<SpeechRecognizedEventArgs>(recognizer_SpeechRecognized);
-
+              new EventHandler<SpeechRecognizedEventArgs>(
+                SpeechRecognizedHandler);
             recognizer.RecognizeCompleted +=
-                new EventHandler<RecognizeCompletedEventArgs>(recognizer_RecognizeCompleted);
+              new EventHandler<RecognizeCompletedEventArgs>(
+                RecognizeCompletedHandler);
 
             // Configure input to the speech recognizer.  
             recognizer.SetInputToDefaultAudioDevice();
@@ -71,7 +92,8 @@ namespace SpeechRecognitionApp
 
 
         // Handle the SpeechRecognized event.  
-        void recognizer_SpeechRecognized(object sender, SpeechRecognizedEventArgs e)
+
+        void recognizer_SpeechRecognized(object? sender, SpeechRecognizedEventArgs e)
         {
             OnSpeechRecognized?.Invoke(e.Result.Text);
         }
@@ -79,5 +101,114 @@ namespace SpeechRecognitionApp
         {
             OnEngineStateChanged?.Invoke(e?.Error == null);
         }
+
+        static void SpeechDetectedHandler(object sender, SpeechDetectedEventArgs e)
+        {
+            Console.WriteLine(" In SpeechDetectedHandler:");
+            Console.WriteLine(" - AudioPosition = {0}", e.AudioPosition);
+        }
+
+        // Handle the SpeechHypothesized event.  
+        static void SpeechHypothesizedHandler(
+          object sender, SpeechHypothesizedEventArgs e)
+        {
+            Console.WriteLine(" In SpeechHypothesizedHandler:");
+
+            string grammarName = "<not available>";
+            string resultText = "<not available>";
+            if (e.Result != null)
+            {
+                if (e.Result.Grammar != null)
+                {
+                    grammarName = e.Result.Grammar.Name;
+                }
+                resultText = e.Result.Text;
+            }
+
+            Console.WriteLine(" - Grammar Name = {0}; Result Text = {1}",
+              grammarName, resultText);
+        }
+
+        // Handle the SpeechRecognitionRejected event.  
+        static void SpeechRecognitionRejectedHandler(
+          object sender, SpeechRecognitionRejectedEventArgs e)
+        {
+            Console.WriteLine(" In SpeechRecognitionRejectedHandler:");
+
+            string grammarName = "<not available>";
+            string resultText = "<not available>";
+            if (e.Result != null)
+            {
+                if (e.Result.Grammar != null)
+                {
+                    grammarName = e.Result.Grammar.Name;
+                }
+                resultText = e.Result.Text;
+            }
+
+            Console.WriteLine(" - Grammar Name = {0}; Result Text = {1}",
+              grammarName, resultText);
+        }
+
+        // Handle the SpeechRecognized event.  
+        static void SpeechRecognizedHandler(
+          object sender, SpeechRecognizedEventArgs e)
+        {
+            Console.WriteLine(" In SpeechRecognizedHandler.");
+
+            string grammarName = "<not available>";
+            string resultText = "<not available>";
+            if (e.Result != null)
+            {
+                if (e.Result.Grammar != null)
+                {
+                    grammarName = e.Result.Grammar.Name;
+                }
+                resultText = e.Result.Text;
+            }
+
+            Console.WriteLine(" - Grammar Name = {0}; Result Text = {1}",
+              grammarName, resultText);
+        }
+
+        // Handle the RecognizeCompleted event.  
+        static void RecognizeCompletedHandler(
+          object sender, RecognizeCompletedEventArgs e)
+        {
+            Console.WriteLine(" In RecognizeCompletedHandler.");
+
+            if (e.Error != null)
+            {
+                Console.WriteLine(
+                  " - Error occurred during recognition: {0}", e.Error);
+                return;
+            }
+            if (e.InitialSilenceTimeout || e.BabbleTimeout)
+            {
+                Console.WriteLine(
+                  " - BabbleTimeout = {0}; InitialSilenceTimeout = {1}",
+                  e.BabbleTimeout, e.InitialSilenceTimeout);
+                return;
+            }
+            if (e.InputStreamEnded)
+            {
+                Console.WriteLine(
+                  " - AudioPosition = {0}; InputStreamEnded = {1}",
+                  e.AudioPosition, e.InputStreamEnded);
+            }
+            if (e.Result != null)
+            {
+                Console.WriteLine(
+                  " - Grammar = {0}; Text = {1}; Confidence = {2}",
+                  e.Result.Grammar.Name, e.Result.Text, e.Result.Confidence);
+                Console.WriteLine(" - AudioPosition = {0}", e.AudioPosition);
+            }
+            else
+            {
+                Console.WriteLine(" - No result.");
+            }
+
+        }
+
     }
 }
