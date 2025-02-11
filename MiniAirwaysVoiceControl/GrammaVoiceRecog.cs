@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.Speech.Recognition;
+using NAudio.CoreAudioApi;
 using static SpeechRecognitionApp.GrammaVoiceRecog;
 
 namespace SpeechRecognitionApp
@@ -29,24 +30,15 @@ namespace SpeechRecognitionApp
             recognizer.SpeechDetected +=
             new EventHandler<SpeechDetectedEventArgs>(
                 SpeechDetectedHandler);
-            recognizer.SpeechHypothesized +=
-              new EventHandler<SpeechHypothesizedEventArgs>(
-                SpeechHypothesizedHandler);
-            recognizer.SpeechRecognitionRejected +=
-              new EventHandler<SpeechRecognitionRejectedEventArgs>(
-                SpeechRecognitionRejectedHandler);
             recognizer.SpeechRecognized +=
               new EventHandler<SpeechRecognizedEventArgs>(
                 SpeechRecognizedHandler);
             recognizer.RecognizeCompleted +=
               new EventHandler<RecognizeCompletedEventArgs>(
                 RecognizeCompletedHandler);
-
-            // Configure input to the speech recognizer.  
-            recognizer.SetInputToDefaultAudioDevice();
         }
 
-        public void Init(string language, Grammar grammar)
+        public void Init(string language, Grammar? grammar = null)
         {
             recognizer = new SpeechRecognitionEngine(new CultureInfo(language));
             if (grammar == null)
@@ -74,9 +66,26 @@ namespace SpeechRecognitionApp
             recognizer.RecognizeCompleted +=
               new EventHandler<RecognizeCompletedEventArgs>(
                 RecognizeCompletedHandler);
+        }
 
-            // Configure input to the speech recognizer.  
-            recognizer.SetInputToDefaultAudioDevice();
+        public bool SetDefaultInput()
+        {
+            try
+            {
+                recognizer.SetInputToDefaultAudioDevice();
+                using (var enumerator = new MMDeviceEnumerator())
+                {
+                    var defaultDevice = enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Console);
+
+                    Console.WriteLine("Default Audio Input Device: " + defaultDevice.FriendlyName);
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error setting input: " + e.Message);
+                return false;
+            }
         }
 
         public void Start()
@@ -85,37 +94,43 @@ namespace SpeechRecognitionApp
             recognizer.RecognizeAsync(RecognizeMode.Multiple);
         }
 
+        public void Cancel()
+        {
+            recognizer.RecognizeAsyncCancel();
+        }
+
         public void Stop()
         {
             recognizer.RecognizeAsyncStop();
         }
 
+        public void SimulateAsync(string text)
+        {
+            recognizer.EmulateRecognizeAsync(text);
+        }
+
 
         // Handle the SpeechRecognized event.  
 
-        void recognizer_SpeechRecognized(object? sender, SpeechRecognizedEventArgs e)
-        {
-            OnSpeechRecognized?.Invoke(e.Result.Text);
-        }
-        void recognizer_RecognizeCompleted(object? sender, RecognizeCompletedEventArgs e)
-        {
-            OnEngineStateChanged?.Invoke(e?.Error == null);
-        }
-
         static void SpeechDetectedHandler(object sender, SpeechDetectedEventArgs e)
         {
-            Console.WriteLine(" In SpeechDetectedHandler:");
-            Console.WriteLine(" - AudioPosition = {0}", e.AudioPosition);
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("[Det]");
+            Console.ResetColor();
+            Console.WriteLine("\tT: {0}", e.AudioPosition);
         }
 
         // Handle the SpeechHypothesized event.  
         static void SpeechHypothesizedHandler(
           object sender, SpeechHypothesizedEventArgs e)
         {
-            Console.WriteLine(" In SpeechHypothesizedHandler:");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("[Hpt]");
+            Console.ResetColor();
 
-            string grammarName = "<not available>";
-            string resultText = "<not available>";
+            string grammarName = "N/A";
+            string resultText = "N/A";
+            string resultConfidence = "N/A";
             if (e.Result != null)
             {
                 if (e.Result.Grammar != null)
@@ -123,20 +138,23 @@ namespace SpeechRecognitionApp
                     grammarName = e.Result.Grammar.Name;
                 }
                 resultText = e.Result.Text;
+                resultConfidence = e.Result.Confidence.ToString();
             }
 
-            Console.WriteLine(" - Grammar Name = {0}; Result Text = {1}",
-              grammarName, resultText);
+            Console.WriteLine("\tG: {0}, R: {1}, C: {2}",
+              grammarName, resultText, resultConfidence);
         }
 
         // Handle the SpeechRecognitionRejected event.  
         static void SpeechRecognitionRejectedHandler(
           object sender, SpeechRecognitionRejectedEventArgs e)
         {
-            Console.WriteLine(" In SpeechRecognitionRejectedHandler:");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("[Rej]");
+            Console.ResetColor();
 
-            string grammarName = "<not available>";
-            string resultText = "<not available>";
+            string grammarName = "N/A";
+            string resultText = "N/A";
             if (e.Result != null)
             {
                 if (e.Result.Grammar != null)
@@ -146,7 +164,7 @@ namespace SpeechRecognitionApp
                 resultText = e.Result.Text;
             }
 
-            Console.WriteLine(" - Grammar Name = {0}; Result Text = {1}",
+            Console.WriteLine("\tG: {0}, R: {1}",
               grammarName, resultText);
         }
 
@@ -167,7 +185,7 @@ namespace SpeechRecognitionApp
                 resultText = e.Result.Text;
             }
 
-            Console.WriteLine(" - Grammar Name = {0}; Result Text = {1}",
+            Console.WriteLine(" - Grammar Name = {0}, Result Text = {1}",
               grammarName, resultText);
         }
 
@@ -207,8 +225,6 @@ namespace SpeechRecognitionApp
             {
                 Console.WriteLine(" - No result.");
             }
-
         }
-
     }
 }

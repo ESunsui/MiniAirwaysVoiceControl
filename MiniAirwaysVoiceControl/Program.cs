@@ -20,13 +20,13 @@ namespace MiniAirwaysVoiceControl
 
         private static Grammar CreateGrammar()
         {
-            Choices AirlineChoice = new Choices(new string[] { "Delta", "America", "American", "United", "Southwest" });
+            Choices AirlineChoice = new Choices(new string[] { "Delta", "America", "JetBlue", "United", "Southwest", "Alaska" });
             GrammarBuilder AirlineElement = new GrammarBuilder(AirlineChoice);
-            Choices FlightNumberChoices = new Choices(new string[] { "one", "two", "three", "tree", "four", "five", "six", "seven", "eight", "nine", "zero"});
+            Choices FlightNumberChoices = new Choices(new string[] { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "zero"});
             GrammarBuilder FlightNumberElement = new GrammarBuilder(FlightNumberChoices, 2, 4);
             GrammarBuilder AircraftElement = new GrammarBuilder();
             AircraftElement.Append(AirlineElement);
-            AircraftElement.Append(new GrammarBuilder("Airlines", 0, 1));
+            AircraftElement.Append(new GrammarBuilder("Airline", 0, 1));
             AircraftElement.Append(new GrammarBuilder("Flight", 0, 1));
             AircraftElement.Append(FlightNumberElement);
             AircraftElement.Culture = new System.Globalization.CultureInfo("en-US");
@@ -41,23 +41,20 @@ namespace MiniAirwaysVoiceControl
             Grammar AircraftGrammar = CreateGrammar();
             AircraftGrammar.Name = "Aircraft";
             VoiceRecog.Init("en-US", AircraftGrammar);
-            //VoiceRecog.Init();
-            VoiceRecog.Start();
-            VoiceRecog.OnSpeechRecognized += Show;
-            VoiceRecog.OnEngineStateChanged += Restart;
-        }
 
-        static void Show(string result)
-        {
-            Console.WriteLine(result);
-            VoiceRecog.Stop();
-        }
+            bool InputSet = VoiceRecog.SetDefaultInput();
 
-        static async void Restart(bool _)
-        {
-            Console.WriteLine("End");
-            await Task.Delay(1000);
-            VoiceRecog.Start();
+            //VoiceRecog.SimulateAsync("United Two one seven");
+
+            if (!InputSet)
+            {
+                Console.WriteLine("Failed to set default input");
+                return;
+            }
+            else
+            {
+                VoiceRecog.Start();
+            }
         }
     }
 }
