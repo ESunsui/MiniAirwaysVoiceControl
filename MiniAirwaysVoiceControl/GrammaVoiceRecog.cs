@@ -38,7 +38,7 @@ namespace SpeechRecognitionApp
                 RecognizeCompletedHandler);
         }
 
-        public void Init(string language, Grammar? grammar = null)
+        public void Init(string language, Grammar[]? grammar = null)
         {
             recognizer = new SpeechRecognitionEngine(new CultureInfo(language));
             if (grammar == null)
@@ -47,7 +47,10 @@ namespace SpeechRecognitionApp
             }
             else
             {
-                recognizer.LoadGrammar(grammar);
+                foreach (Grammar g in grammar)
+                {
+                    recognizer.LoadGrammar(g);
+                }
             }
 
             // Add a handler for the speech recognized event.  
@@ -66,6 +69,20 @@ namespace SpeechRecognitionApp
             recognizer.RecognizeCompleted +=
               new EventHandler<RecognizeCompletedEventArgs>(
                 RecognizeCompletedHandler);
+        }
+
+        public void SetGrammar(Grammar[]? grammar = null)
+        {
+            recognizer.UnloadAllGrammars();
+            if (grammar == null)
+                recognizer.LoadGrammar(new DictationGrammar());
+            else
+            {
+                foreach (Grammar g in grammar)
+                {
+                    recognizer.LoadGrammar(g);
+                }
+            }
         }
 
         public bool SetDefaultInput()
