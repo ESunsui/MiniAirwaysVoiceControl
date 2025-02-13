@@ -6,52 +6,38 @@ using static SpeechRecognitionApp.GrammaVoiceRecog;
 
 namespace SpeechRecognitionApp
 {
-    class GrammaVoiceRecog
+    public class GrammaVoiceRecog
     {
         SpeechRecognitionEngine recognizer;
-        public delegate void OnSpeechRecognizedHandler(string Text);
+        public delegate void OnSpeechHypothesizedHandler(string Text);
+        public event OnSpeechHypothesizedHandler OnSpeechHypothesized;
+        public delegate void OnSpeechRejectedHandler();
+        public event OnSpeechRejectedHandler OnSpeechRejected;
+        public delegate void OnSpeechRecognizedHandler(string grammar, string Text);
         public event OnSpeechRecognizedHandler OnSpeechRecognized;
 
-        public delegate void OnEngineStateChangeHandler(bool Success);
-        public event OnEngineStateChangeHandler OnEngineStateChanged;
 
-        public void Init()
+        public void Init(string language)
         {
-            recognizer =
-              new SpeechRecognitionEngine(
-                new System.Globalization.CultureInfo("en-US")
-                );
-
-            // Create and load a dictation grammar.  
-            recognizer.LoadGrammar(new DictationGrammar());
-
-            // Add a handler for the speech recognized event.  
-
-            recognizer.SpeechDetected +=
-            new EventHandler<SpeechDetectedEventArgs>(
-                SpeechDetectedHandler);
-            recognizer.SpeechRecognized +=
-              new EventHandler<SpeechRecognizedEventArgs>(
-                SpeechRecognizedHandler);
-            recognizer.RecognizeCompleted +=
-              new EventHandler<RecognizeCompletedEventArgs>(
-                RecognizeCompletedHandler);
-        }
-
-        public void Init(string language, Grammar[]? grammar = null)
-        {
-            recognizer = new SpeechRecognitionEngine(new CultureInfo(language));
-            if (grammar == null)
+            try
             {
-                recognizer.LoadGrammar(new DictationGrammar());
+                recognizer = new SpeechRecognitionEngine(new CultureInfo(language));
             }
-            else
+            catch (System.ArgumentException e)
             {
-                foreach (Grammar g in grammar)
+                if (e.ParamName == "culture")
                 {
-                    recognizer.LoadGrammar(g);
+                    Console.WriteLine("Invalid language or corresponding language speech recognition package is not installed: " + language);
+                    return;
+                }
+                else
+                {
+                    Console.WriteLine("Error initializing speech recognition engine: " + e.Message);
+                    return;
                 }
             }
+            
+            
 
             // Add a handler for the speech recognized event.  
             recognizer.SpeechDetected +=
@@ -129,20 +115,20 @@ namespace SpeechRecognitionApp
 
         // Handle the SpeechRecognized event.  
 
-        static void SpeechDetectedHandler(object sender, SpeechDetectedEventArgs e)
+        void SpeechDetectedHandler(object sender, SpeechDetectedEventArgs e)
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("[Det]");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("[Detected]");
             Console.ResetColor();
             Console.WriteLine("\tT: {0}", e.AudioPosition);
         }
 
         // Handle the SpeechHypothesized event.  
-        static void SpeechHypothesizedHandler(
+        void SpeechHypothesizedHandler(
           object sender, SpeechHypothesizedEventArgs e)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("[Hpt]");
+            Console.WriteLine("[Hypothesized]");
             Console.ResetColor();
 
             string grammarName = "N/A";
@@ -160,14 +146,15 @@ namespace SpeechRecognitionApp
 
             Console.WriteLine("\tG: {0}, R: {1}, C: {2}",
               grammarName, resultText, resultConfidence);
+            OnSpeechHypothesized?.Invoke(resultText);
         }
 
         // Handle the SpeechRecognitionRejected event.  
-        static void SpeechRecognitionRejectedHandler(
+        void SpeechRecognitionRejectedHandler(
           object sender, SpeechRecognitionRejectedEventArgs e)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("[Rej]");
+            Console.WriteLine("[Rejected]");
             Console.ResetColor();
 
             string grammarName = "N/A";
@@ -183,13 +170,16 @@ namespace SpeechRecognitionApp
 
             Console.WriteLine("\tG: {0}, R: {1}",
               grammarName, resultText);
+            OnSpeechRejected?.Invoke();
         }
 
         // Handle the SpeechRecognized event.  
-        static void SpeechRecognizedHandler(
+        void SpeechRecognizedHandler(
           object sender, SpeechRecognizedEventArgs e)
         {
-            Console.WriteLine(" In SpeechRecognizedHandler.");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("[Accepted]");
+            Console.ResetColor();
 
             string grammarName = "<not available>";
             string resultText = "<not available>";
@@ -202,15 +192,18 @@ namespace SpeechRecognitionApp
                 resultText = e.Result.Text;
             }
 
-            Console.WriteLine(" - Grammar Name = {0}, Result Text = {1}",
+            Console.WriteLine("\tG: {0}, R: {1}",
               grammarName, resultText);
+            OnSpeechRecognized?.Invoke(grammarName, resultText);
         }
 
         // Handle the RecognizeCompleted event.  
-        static void RecognizeCompletedHandler(
+        void RecognizeCompletedHandler(
           object sender, RecognizeCompletedEventArgs e)
         {
-            Console.WriteLine(" In RecognizeCompletedHandler.");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("[Completed]");
+            Console.ResetColor();
 
             if (e.Error != null)
             {
