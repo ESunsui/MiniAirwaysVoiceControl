@@ -8,6 +8,9 @@
     <StartupObject>MiniAirwaysVoiceControl.Program</StartupObject>
     <Platforms>AnyCPU;x64</Platforms>
     <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <Authors>Sunsui</Authors>
+    <Company>ContextCross</Company>
+    <Product>MiniAIrwaysVoiceControl</Product>
   </PropertyGroup>
 
   <ItemGroup>

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SpeechRecognitionApp
 {
-    public class NamedPipeClient
+    internal class NamedPipeClient
     {
         const string pipeName = "MiniAirwaysVOControl";
         NamedPipeClientStream pipeClient;
@@ -97,6 +97,7 @@ namespace SpeechRecognitionApp
 
         public void Close()
         {
+            
             if (receiveTask != null)
             {
                 receiveTask.Dispose();

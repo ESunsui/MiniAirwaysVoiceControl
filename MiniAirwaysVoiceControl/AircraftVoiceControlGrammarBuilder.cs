@@ -1,13 +1,29 @@
-﻿using System.Speech.Recognition;
+﻿using System.Globalization;
+using System.Speech.Recognition;
+using System.Text.RegularExpressions;
+using static MiniAirwaysVoiceControl.MiniAirwaysVoiceControlInterface;
 
-namespace SpeechRecognitionApp
+namespace MiniAirwaysVoiceControl
 {
-    public class AircraftVoiceControlGrammarBuilder
+    internal class AircraftVoiceControlGrammarBuilder
     {
         Choices NumberChoices;
         Choices RunwayDirectionChoice;
         Choices DirectionChoice;
         Choices AlphabetChoice;
+
+        List<string> AircraftGetStatusRuleBase = new();
+        List<string> AircraftTakeoffRuleBase = new();
+        List<string> AircraftLandingRuleBase = new();
+        List<string> AircraftFlyHeadingRuleBase = new();
+        List<string> AircraftVectorToWaypointRuleBase = new();
+
+        const string AircraftElement = "{Aircraft}";
+        const string NamedWaypointElement = "{Waypoint}";
+        const string RunwayElement = "{Runway}";
+        const string HeadingElement = "{Heading}";
+
+
         public void Init()
         {
             NumberChoices = new Choices(new string[] { 
@@ -26,11 +42,50 @@ namespace SpeechRecognitionApp
             });
         }
 
+        public void SetRules(GrammarStruct grammarStruct)
+        {
+            AircraftGetStatusRuleBase = new();
+            AircraftTakeoffRuleBase = new();
+            AircraftLandingRuleBase = new();
+            AircraftFlyHeadingRuleBase = new();
+            AircraftVectorToWaypointRuleBase = new();
+
+            foreach (string rule in grammarStruct.AircraftStatRules)
+            {
+                if (CSRParser.CountOccurrences(rule, AircraftElement) == 1)
+                    AircraftGetStatusRuleBase.Add(rule);
+            }
+
+            foreach (string rule in grammarStruct.AircraftTakeoffRules)
+            {
+                if (CSRParser.CountOccurrences(rule, AircraftElement) == 1 && CSRParser.CountOccurrences(rule, RunwayElement) == 1)
+                    AircraftTakeoffRuleBase.Add(rule);
+            }
+
+            foreach (string rule in grammarStruct.AircraftLandingRules)
+            {
+                if (CSRParser.CountOccurrences(rule, AircraftElement) == 1 && CSRParser.CountOccurrences(rule, RunwayElement) == 1)
+                    AircraftLandingRuleBase.Add(rule);
+            }
+
+            foreach (string rule in grammarStruct.AircraftFlyHeadingRules)
+            {
+                if (CSRParser.CountOccurrences(rule, AircraftElement) == 1 && CSRParser.CountOccurrences(rule, HeadingElement) == 1)
+                    AircraftFlyHeadingRuleBase.Add(rule);
+            }
+
+            foreach (string rule in grammarStruct.AircraftVectorToWaypointRules)
+            {
+                if (CSRParser.CountOccurrences(rule, AircraftElement) == 1 && CSRParser.CountOccurrences(rule, NamedWaypointElement) == 1)
+                    AircraftVectorToWaypointRuleBase.Add(rule);
+            }
+        }
+
         public Grammar[] CreateGrammar(string[] airlines, string[] waypoints)
         {
             List<Grammar> grammars = new List<Grammar>();
             Choices AirlineChoice = new Choices(airlines);
-            Choices WaypointChoice = new Choices(waypoints);
+            Choices NamedWaypointChoice = new Choices(waypoints);
             
 
             GrammarBuilder AircraftElement = new GrammarBuilder();
@@ -41,7 +96,17 @@ namespace SpeechRecognitionApp
 
             GrammarBuilder NamedWaypointElement = new GrammarBuilder();
             NamedWaypointElement.Append(new GrammarBuilder("Waypoint", 0, 1));
-            NamedWaypointElement.Append(new GrammarBuilder(WaypointChoice));
+            NamedWaypointElement.Append(new GrammarBuilder(NamedWaypointChoice));
+
+            GrammarBuilder NormalWaypointElement = new GrammarBuilder();
+            NormalWaypointElement.Append(new GrammarBuilder(AlphabetChoice, 1, 3));
+
+            GrammarBuilder WaypointElement = new GrammarBuilder(new Choices(NamedWaypointElement, NormalWaypointElement));
+
+            GrammarBuilder HeadingElement = new GrammarBuilder();
+            HeadingElement.Append(NumberChoices);
+            HeadingElement.Append(NumberChoices);
+            HeadingElement.Append(NumberChoices);
 
             GrammarBuilder RunwayElement = new GrammarBuilder();
             RunwayElement.Append(new GrammarBuilder("Runway", 0, 1));
@@ -49,49 +114,136 @@ namespace SpeechRecognitionApp
             RunwayElement.Append(new GrammarBuilder(RunwayDirectionChoice, 0, 1));
 
             // No Command, Show flying path
-            Choices AircraftGetStatusCommandChoice = new Choices(new string[] { "Ident", "What's your status" });
-            GrammarBuilder AircraftGetStatus = new GrammarBuilder();
-            AircraftGetStatus.Append(AircraftElement);
-            AircraftGetStatus.Append(new GrammarBuilder(AircraftGetStatusCommandChoice));
-            AircraftGetStatus.Culture = new System.Globalization.CultureInfo("en-US");
-            Grammar AircraftGetStatusGrammar = new Grammar(AircraftGetStatus);
-            AircraftGetStatusGrammar.Name = "AircraftGetStatus";
-            grammars.Add(AircraftGetStatusGrammar);
+            for(int i = 0; i < AircraftGetStatusRuleBase.Count; i++)
+            {
+                Grammar grammar = CSRParser.ParseCSR(AircraftGetStatusRuleBase[i], AircraftElement, RunwayElement, HeadingElement, WaypointElement, new CultureInfo("en-US"));
+                grammar.Name = "AGS" + i.ToString();
+                grammars.Add(grammar);
+            }
 
             // Aircraft Takeoff
-            Choices AircraftTakeOffCommandChoice = new Choices(new string[] { "Cleard to takeoff" });
-            GrammarBuilder AircraftTakeOff = new GrammarBuilder();
-            AircraftTakeOff.Append(AircraftElement);
-            AircraftTakeOff.Append(new GrammarBuilder(AircraftTakeOffCommandChoice));
-            AircraftTakeOff.Append(RunwayElement);
-            AircraftTakeOff.Culture = new System.Globalization.CultureInfo("en-US");
-            Grammar AircraftTakeOffGrammar = new Grammar(AircraftTakeOff);
-            AircraftTakeOffGrammar.Name = "AircraftTakeOff";
-            grammars.Add(AircraftTakeOffGrammar);
+            for (int i = 0; i < AircraftTakeoffRuleBase.Count; i++)
+            {
+                Grammar grammar = CSRParser.ParseCSR(AircraftTakeoffRuleBase[i], AircraftElement, RunwayElement, HeadingElement, WaypointElement, new CultureInfo("en-US"));
+                grammar.Name = "ATO" + i.ToString();
+                grammars.Add(grammar);
+            }
 
             // Aircraft Land
-            Choices AircraftLandCommandChoice = new Choices(new string[] { "Cleard to land", "Cleard to approach" });
-            GrammarBuilder AircraftLand = new GrammarBuilder();
-            AircraftLand.Append(AircraftElement);
-            AircraftLand.Append(new GrammarBuilder(AircraftLandCommandChoice));
-            AircraftLand.Append(RunwayElement);
-            AircraftLand.Culture = new System.Globalization.CultureInfo("en-US");
-            Grammar AircraftLandGrammar = new Grammar(AircraftLand);
-            AircraftLandGrammar.Name = "AircraftLand";
-            grammars.Add(AircraftLandGrammar);
+            for (int i = 0; i < AircraftLandingRuleBase.Count; i++)
+            {
+                Grammar grammar = CSRParser.ParseCSR(AircraftLandingRuleBase[i], AircraftElement, RunwayElement, HeadingElement, WaypointElement, new CultureInfo("en-US"));
+                grammar.Name = "ALD" + i.ToString();
+                grammars.Add(grammar);
+            }
 
-            // Aircraft Vector to Named Waypoint
-            Choices AircraftVectorToNamedWaypointCommandChoice = new Choices(new string[] { "Vector to", "Heading to", "Direct to" });
-            GrammarBuilder AircraftVectorToNamedWaypoint = new GrammarBuilder();
-            AircraftVectorToNamedWaypoint.Append(AircraftElement);
-            AircraftVectorToNamedWaypoint.Append(new GrammarBuilder(AircraftVectorToNamedWaypointCommandChoice));
-            AircraftVectorToNamedWaypoint.Append(NamedWaypointElement);
-            AircraftVectorToNamedWaypoint.Culture = new System.Globalization.CultureInfo("en-US");
-            Grammar AircraftVectorToNamedWaypointGrammar = new Grammar(AircraftVectorToNamedWaypoint);
-            AircraftVectorToNamedWaypointGrammar.Name = "AircraftVectorToNamedWaypoint";
-            grammars.Add(AircraftVectorToNamedWaypointGrammar);
+            // Aircraft Vector to Waypoint
+            for (int i = 0; i < AircraftVectorToWaypointRuleBase.Count; i++)
+            {
+                Grammar grammar = CSRParser.ParseCSR(AircraftVectorToWaypointRuleBase[i], AircraftElement, RunwayElement, HeadingElement, WaypointElement, new CultureInfo("en-US"));
+                grammar.Name = "AVW" + i.ToString();
+                grammars.Add(grammar);
+            }
+
+            // Aircraft FlyHeading
+            for (int i = 0; i < AircraftFlyHeadingRuleBase.Count; i++)
+            {
+                Grammar grammar = CSRParser.ParseCSR(AircraftFlyHeadingRuleBase[i], AircraftElement, RunwayElement, HeadingElement, WaypointElement, new CultureInfo("en-US"));
+                grammar.Name = "AFH" + i.ToString();
+                grammars.Add(grammar);
+            }
 
             return grammars.ToArray();
+        }
+    }
+
+    public class CSRParser
+    {
+        public static Grammar ParseCSR(string csr, GrammarBuilder aircraftElement, GrammarBuilder runwayElement, GrammarBuilder headingElement, GrammarBuilder WaypointElement, CultureInfo cultureInfo)
+        {
+            GrammarBuilder gb = new GrammarBuilder();
+            int lastIndex = 0;
+
+            // Regex to match tokens: {element}, <choice1|choice2>, [optional]
+            Regex pattern = new Regex(@"\{[^\}]+\}|\<[^\>]+\>|$$[^$$]+\]");
+
+            MatchCollection matches = pattern.Matches(csr);
+
+            foreach (Match match in matches)
+            {
+                // Append any plain text before the current match
+                if (match.Index > lastIndex)
+                {
+                    string text = csr.Substring(lastIndex, match.Index - lastIndex).Trim();
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        gb.Append(text);
+                    }
+                }
+
+                string token = match.Value;
+                if (token.StartsWith("{") && token.EndsWith("}"))
+                {
+                    // Handle predefined elements, assuming speach engine will capture its value via semantic keys
+                    string element = token.Trim('{', '}');
+                    switch (element)
+                    {
+                        case "Aircraft":
+                            gb.Append(aircraftElement);
+                            break;
+                        case "Runway":
+                            gb.Append(runwayElement);
+                            break;
+                        case "Heading":
+                            gb.Append(headingElement);
+                            break;
+                        case "Waypoint":
+                            gb.Append(WaypointElement);
+                            break;
+                        default:
+                            gb.Append(token); break;
+                    }
+                }
+                else if (token.StartsWith("<") && token.EndsWith(">"))
+                {
+                    // Handle choices
+                    string[] choices = token.Trim('<', '>').Split('|');
+                    gb.Append(new Choices(choices));
+                }
+                else if (token.StartsWith("[") && token.EndsWith("]"))
+                {
+                    // Handle optional sections, with the optional content appearing zero or one time
+                    string optionalContent = token.Trim('[', ']');
+                    gb.Append(new GrammarBuilder(optionalContent, 0, 1));
+                }
+
+                // Update last index
+                lastIndex = match.Index + match.Length;
+            }
+
+            // Append any remaining text after the last match
+            if (lastIndex < csr.Length)
+            {
+                string text = csr.Substring(lastIndex).Trim();
+                if (!string.IsNullOrEmpty(text))
+                {
+                    gb.Append(text);
+                }
+            }
+
+            gb.Culture = cultureInfo;
+            return new Grammar(gb);
+        }
+
+        public static int CountOccurrences(string stringA, string stringB)
+        {
+            if (string.IsNullOrEmpty(stringB))
+            {
+                return 0;
+            }
+
+            string pattern = Regex.Escape(stringB);
+            return Regex.Matches(stringA, pattern).Count;
         }
     }
 }

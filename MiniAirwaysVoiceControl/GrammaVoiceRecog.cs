@@ -2,11 +2,10 @@
 using System.Globalization;
 using System.Speech.Recognition;
 using NAudio.CoreAudioApi;
-using static SpeechRecognitionApp.GrammaVoiceRecog;
 
-namespace SpeechRecognitionApp
+namespace MiniAirwaysVoiceControl
 {
-    public class GrammaVoiceRecog
+    internal class GrammaVoiceRecog
     {
         SpeechRecognitionEngine recognizer;
         public delegate void OnSpeechHypothesizedHandler(string Text);
