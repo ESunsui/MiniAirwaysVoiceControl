@@ -14,7 +14,6 @@ namespace SpeechRecognitionApp
         StreamReader reader;
         StreamWriter writer;
         Task receiveTask;
-        Task keepAliveTask;
 
         public bool IsConnecting { get { return pipeClient != null; } }
         public bool IsConnected { get { return reader != null; } }

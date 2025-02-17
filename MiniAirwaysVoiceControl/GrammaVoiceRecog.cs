@@ -8,12 +8,18 @@ namespace MiniAirwaysVoiceControl
     internal class GrammaVoiceRecog
     {
         SpeechRecognitionEngine recognizer;
-        public delegate void OnSpeechHypothesizedHandler(string Text);
-        public event OnSpeechHypothesizedHandler OnSpeechHypothesized;
-        public delegate void OnSpeechRejectedHandler();
-        public event OnSpeechRejectedHandler OnSpeechRejected;
-        public delegate void OnSpeechRecognizedHandler(string grammar, string Text);
-        public event OnSpeechRecognizedHandler OnSpeechRecognized;
+
+        public event EventHandler<string> OnSRPackageNotInstalled;
+        public event EventHandler<string> OnSRInitFailed;
+
+        public event EventHandler<string> OnInputDeviceSet;
+        public event EventHandler<string> OnInputDeviceSetFailed;
+
+        public event EventHandler<bool> OnSpeechRecogRunningStateChanged;
+
+        public event EventHandler<string> OnSpeechHypothesized;
+        public event EventHandler<string> OnSpeechRejected;
+        public event EventHandler<(string, string)> OnSpeechRecognized;
 
 
         public void Init(string language)
@@ -27,11 +33,13 @@ namespace MiniAirwaysVoiceControl
                 if (e.ParamName == "culture")
                 {
                     Console.WriteLine("Invalid language or corresponding language speech recognition package is not installed: " + language);
+                    OnSRPackageNotInstalled?.Invoke(this, language);
                     return;
                 }
                 else
                 {
                     Console.WriteLine("Error initializing speech recognition engine: " + e.Message);
+                    OnSRInitFailed?.Invoke(this, e.Message);
                     return;
                 }
             }
@@ -70,6 +78,11 @@ namespace MiniAirwaysVoiceControl
             }
         }
 
+        public void ClearGrammar()
+        {
+            recognizer.UnloadAllGrammars();
+        }
+
         public bool SetDefaultInput()
         {
             try
@@ -94,16 +107,14 @@ namespace MiniAirwaysVoiceControl
         {
             // Start asynchronous, continuous speech recognition.  
             recognizer.RecognizeAsync(RecognizeMode.Multiple);
-        }
-
-        public void Cancel()
-        {
-            recognizer.RecognizeAsyncCancel();
+            OnSpeechRecogRunningStateChanged?.Invoke(this, true);
         }
 
         public void Stop()
         {
+            recognizer.RecognizeAsyncCancel();
             recognizer.RecognizeAsyncStop();
+            OnSpeechRecogRunningStateChanged?.Invoke(this, false);
         }
 
         public void SimulateAsync(string text)
@@ -116,7 +127,7 @@ namespace MiniAirwaysVoiceControl
 
         void SpeechDetectedHandler(object sender, SpeechDetectedEventArgs e)
         {
-            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.ForegroundColor = ConsoleColor.DarkGray;
             Console.WriteLine("[Detected]");
             Console.ResetColor();
             Console.WriteLine("\tT: {0}", e.AudioPosition);
@@ -145,7 +156,7 @@ namespace MiniAirwaysVoiceControl
 
             Console.WriteLine("\tG: {0}, R: {1}, C: {2}",
               grammarName, resultText, resultConfidence);
-            OnSpeechHypothesized?.Invoke(resultText);
+            OnSpeechHypothesized?.Invoke(this, resultText);
         }
 
         // Handle the SpeechRecognitionRejected event.  
@@ -169,7 +180,7 @@ namespace MiniAirwaysVoiceControl
 
             Console.WriteLine("\tG: {0}, R: {1}",
               grammarName, resultText);
-            OnSpeechRejected?.Invoke();
+            OnSpeechRejected?.Invoke(this, null);
         }
 
         // Handle the SpeechRecognized event.  
@@ -193,7 +204,7 @@ namespace MiniAirwaysVoiceControl
 
             Console.WriteLine("\tG: {0}, R: {1}",
               grammarName, resultText);
-            OnSpeechRecognized?.Invoke(grammarName, resultText);
+            OnSpeechRecognized?.Invoke(this, (grammarName, resultText));
         }
 
         // Handle the RecognizeCompleted event.  

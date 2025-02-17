@@ -35,8 +35,15 @@ namespace MiniAirwaysVoiceControl
         {
             await PipeClient.Connect();
             VoiceControl.Attach(PipeClient);
-
             GrammarBuilder.Init();
+
+            VoiceControl.OnConnectToInputDevice += (object _, bool IsConnected) =>
+            {
+                if (IsConnected)
+                {
+                    VoiceRecog.SetDefaultInput();
+                }
+            };
 
             VoiceControl.OnVoiceEngineRunningStateChanged += (object _, bool IsRunning) =>
             {
@@ -65,26 +72,6 @@ namespace MiniAirwaysVoiceControl
                 Grammar[] grammars = GrammarBuilder.CreateGrammar(GrammarSource.Airlines, GrammarSource.NamedWaypoints);
                 VoiceRecog.SetGrammar(grammars);
             };
-
-
-            bool InputSet = VoiceRecog.SetDefaultInput();
-
-            //VoiceRecog.SimulateAsync("United Two one seven");
-
-            if (!InputSet)
-            {
-                Console.WriteLine("Failed to set default input");
-                return;
-            }
-            else
-            {
-                VoiceRecog.OnSpeechHypothesized += (string Text) =>
-                {
-                    PipeClient.Send(Text);
-                };
-
-                VoiceRecog.Start();
-            }
         }
     }
 }
