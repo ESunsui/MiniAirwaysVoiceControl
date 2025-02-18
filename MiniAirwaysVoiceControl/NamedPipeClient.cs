@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SpeechRecognitionApp
 {
-    internal class NamedPipeClient
+    public class NamedPipeClient
     {
         const string pipeName = "MiniAirwaysVOControl";
         NamedPipeClientStream pipeClient;
@@ -56,12 +56,6 @@ namespace SpeechRecognitionApp
                     try
                     {
                         string message = await reader.ReadLineAsync();
-                        if (message == null)
-                        {
-                            Console.WriteLine("Mini Airways disconnected.");
-                            Close();
-                            break;
-                        }
                         Console.WriteLine(message);
                         OnMessageReceived.Invoke(message);
                     }

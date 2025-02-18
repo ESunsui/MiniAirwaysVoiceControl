@@ -1,6 +1,8 @@
 ﻿using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Speech.Recognition;
 using System.Text.RegularExpressions;
+using static MiniAirwaysVoiceControl.GrammaVoiceRecog;
 using static MiniAirwaysVoiceControl.MiniAirwaysVoiceControlInterface;
 
 namespace MiniAirwaysVoiceControl
@@ -9,7 +11,6 @@ namespace MiniAirwaysVoiceControl
     {
         Choices NumberChoices;
         Choices RunwayDirectionChoice;
-        Choices DirectionChoice;
         Choices AlphabetChoice;
 
         List<string> AircraftGetStatusRuleBase = new();
@@ -18,11 +19,13 @@ namespace MiniAirwaysVoiceControl
         List<string> AircraftFlyHeadingRuleBase = new();
         List<string> AircraftVectorToWaypointRuleBase = new();
 
+        List<string> AirlineCallsigns = new();
+        List<string> NamedWaypoints = new();
+
         const string AircraftElement = "{Aircraft}";
         const string NamedWaypointElement = "{Waypoint}";
         const string RunwayElement = "{Runway}";
         const string HeadingElement = "{Heading}";
-
 
         public void Init()
         {
@@ -31,9 +34,6 @@ namespace MiniAirwaysVoiceControl
             });
             RunwayDirectionChoice = new Choices(new string[] { 
                 "Left", "Right", "Center" 
-            });
-            DirectionChoice = new Choices(new string[] { 
-                "North", "South", "East", "West" , "Northwest", "Northeast", "Southwest", "Southeast"
             });
             AlphabetChoice = new Choices(new string[] { 
                 "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India",
@@ -83,6 +83,9 @@ namespace MiniAirwaysVoiceControl
 
         public Grammar[] CreateGrammar(string[] airlines, string[] waypoints)
         {
+            AirlineCallsigns = new List<string>(airlines);
+            NamedWaypoints = new List<string>(waypoints);
+
             List<Grammar> grammars = new List<Grammar>();
             Choices AirlineChoice = new Choices(airlines);
             Choices NamedWaypointChoice = new Choices(waypoints);
@@ -155,95 +158,224 @@ namespace MiniAirwaysVoiceControl
 
             return grammars.ToArray();
         }
-    }
 
-    public class CSRParser
-    {
-        public static Grammar ParseCSR(string csr, GrammarBuilder aircraftElement, GrammarBuilder runwayElement, GrammarBuilder headingElement, GrammarBuilder WaypointElement, CultureInfo cultureInfo)
+        string MatchAircraftPattern(string s)
         {
-            GrammarBuilder gb = new GrammarBuilder();
-            int lastIndex = 0;
-
-            // Regex to match tokens: {element}, <choice1|choice2>, [optional]
-            Regex pattern = new Regex(@"\{[^\}]+\}|\<[^\>]+\>|$$[^$$]+\]");
-
-            MatchCollection matches = pattern.Matches(csr);
-
-            foreach (Match match in matches)
+            // Sanitize patterns in P for regular expression
+            List<string> sanitizedPatterns = new List<string>();
+            foreach (var pattern in this.AirlineCallsigns)
             {
-                // Append any plain text before the current match
-                if (match.Index > lastIndex)
+                sanitizedPatterns.Add(Regex.Escape(pattern));
+            }
+
+            // Create a pattern to match any one of the patterns in P once
+            string unionPattern = string.Join("|", sanitizedPatterns);
+            string numberWords = "(one|two|three|four|five|six|seven|eight|nine|zero)";
+
+            // Create the full regex pattern according to the rules specified
+            string fullPattern = $@"^(?=.*\b({unionPattern})\b)(?:(?!(\1)).)*?(\bAirline\b)?(?!(\1)).*?(\bFlight\b)?(?!(\1)).*?({numberWords}(?:\s+{numberWords}){{1,3}})(?!(\1)).*?$";
+
+            // Build the regex object with case insensitive option
+            Regex regex = new Regex(fullPattern, RegexOptions.IgnoreCase);
+
+            // Perform the match
+            List<string> matches = regex.Matches(s).Cast<Match>().Select(m => m.Value).ToList();
+            if (matches.Count > 0)
+            {
+                if (matches.Count > 1)
+                    matches.Sort((a, b) => a.Length == b.Length ? s.IndexOf(b).CompareTo(s.IndexOf(a)) : b.Length.CompareTo(a.Length));
+                return matches.First();
+            }
+            return string.Empty;
+        }
+
+        string MatchRunwayPattern(string s)
+        {
+            string numberWords = "(one|two|three|four|five|six|seven|eight|nine|zero)";
+            string directionWords = "(left|right|center)";
+            string fullPattern = $@"^(?:Runway\s?)?{numberWords}\s{numberWords}(?:\s{directionWords})?$";
+            Regex regex = new Regex(fullPattern, RegexOptions.IgnoreCase);
+            List<string> matches = regex.Matches(s).Cast<Match>().Select(m => m.Value).ToList();
+            if (matches.Count > 0)
+            {
+                if (matches.Count > 1)
+                    matches.Sort((a, b) => a.Length == b.Length ? s.IndexOf(b).CompareTo(s.IndexOf(a)) : b.Length.CompareTo(a.Length));
+                return matches.First();
+            }
+            return string.Empty;
+        }
+
+        string MatchHeadingPattern(string s)
+        {
+            string numberWords = "(one|two|three|four|five|six|seven|eight|nine|zero)";
+            string fullPattern = $@"^{numberWords}\s{numberWords}\s{numberWords}$";
+            Regex regex = new Regex(fullPattern, RegexOptions.IgnoreCase);
+            List<string> matches = regex.Matches(s).Cast<Match>().Select(m => m.Value).ToList();
+            if (matches.Count > 0)
+            {
+                if (matches.Count > 1)
+                    matches.Sort((a, b) => s.IndexOf(b).CompareTo(s.IndexOf(a)));
+                return matches.First();
+            }
+            return string.Empty;
+        }
+
+        string MatchNamedWaypointPattern(string s)
+        {
+            foreach (var waypoint in this.NamedWaypoints)
+            {
+                if (s.Contains(waypoint))
                 {
-                    string text = csr.Substring(lastIndex, match.Index - lastIndex).Trim();
+                    return waypoint;
+                }
+            }
+            return string.Empty;
+        }
+
+        public SRResult ExtractGrammar(ResultType rt, string grammarName, string s)
+        {
+            GrammarType gt = GrammarType.Invalid;
+            if (rt == ResultType.Rejected || string.IsNullOrEmpty(s))
+            {
+                return new SRResult()
+                {
+                    Type = rt,
+                    Grammar = gt,
+                    Message = "",
+                    Aircraft = "",
+                    Waypoint = "",
+                    Heading = "",
+                    Runway = ""
+                };
+            }
+
+            switch (grammarName.Substring(0, 3))
+            {
+                case "AGS":
+                    gt = GrammarType.AircraftStat;
+                    break;
+                case "ATO":
+                    gt = GrammarType.AircraftTakeoff;
+                    break;
+                case "ALD":
+                    gt = GrammarType.AircraftLanding;
+                    break;
+                case "AFH":
+                    gt = GrammarType.AircraftFlyHeading;
+                    break;
+                case "AVW":
+                    gt = GrammarType.AircraftVectorToWaypoint;
+                    break;
+                default:
+                    break;
+            }
+
+            string aircraft = MatchAircraftPattern(s);
+            string runway = MatchRunwayPattern(s);
+            string heading = MatchHeadingPattern(s);
+            string waypoint = MatchNamedWaypointPattern(s);
+
+            return new SRResult()
+            {
+                Type = rt,
+                Grammar = gt,
+                Message = s,
+                Aircraft = aircraft,
+                Waypoint = waypoint,
+                Heading = heading,
+                Runway = runway
+            };
+        }
+
+        public class CSRParser
+        {
+            public static Grammar ParseCSR(string csr, GrammarBuilder aircraftElement, GrammarBuilder runwayElement, GrammarBuilder headingElement, GrammarBuilder WaypointElement, CultureInfo cultureInfo)
+            {
+                GrammarBuilder gb = new GrammarBuilder();
+                int lastIndex = 0;
+
+                // Regex to match tokens: {element}, <choice1|choice2>, [optional]
+                Regex pattern = new Regex(@"\{[^\}]+\}|\<[^\>]+\>|$$[^$$]+\]");
+
+                MatchCollection matches = pattern.Matches(csr);
+
+                foreach (Match match in matches)
+                {
+                    // Append any plain text before the current match
+                    if (match.Index > lastIndex)
+                    {
+                        string text = csr.Substring(lastIndex, match.Index - lastIndex).Trim();
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            gb.Append(text);
+                        }
+                    }
+
+                    string token = match.Value;
+                    if (token.StartsWith("{") && token.EndsWith("}"))
+                    {
+                        // Handle predefined elements, assuming speach engine will capture its value via semantic keys
+                        string element = token.Trim('{', '}');
+                        switch (element)
+                        {
+                            case "Aircraft":
+                                gb.Append(aircraftElement);
+                                break;
+                            case "Runway":
+                                gb.Append(runwayElement);
+                                break;
+                            case "Heading":
+                                gb.Append(headingElement);
+                                break;
+                            case "Waypoint":
+                                gb.Append(WaypointElement);
+                                break;
+                            default:
+                                gb.Append(token); break;
+                        }
+                    }
+                    else if (token.StartsWith("<") && token.EndsWith(">"))
+                    {
+                        // Handle choices
+                        string[] choices = token.Trim('<', '>').Split('|');
+                        gb.Append(new Choices(choices));
+                    }
+                    else if (token.StartsWith("[") && token.EndsWith("]"))
+                    {
+                        // Handle optional sections, with the optional content appearing zero or one time
+                        string optionalContent = token.Trim('[', ']');
+                        gb.Append(new GrammarBuilder(optionalContent, 0, 1));
+                    }
+
+                    // Update last index
+                    lastIndex = match.Index + match.Length;
+                }
+
+                // Append any remaining text after the last match
+                if (lastIndex < csr.Length)
+                {
+                    string text = csr.Substring(lastIndex).Trim();
                     if (!string.IsNullOrEmpty(text))
                     {
                         gb.Append(text);
                     }
                 }
 
-                string token = match.Value;
-                if (token.StartsWith("{") && token.EndsWith("}"))
-                {
-                    // Handle predefined elements, assuming speach engine will capture its value via semantic keys
-                    string element = token.Trim('{', '}');
-                    switch (element)
-                    {
-                        case "Aircraft":
-                            gb.Append(aircraftElement);
-                            break;
-                        case "Runway":
-                            gb.Append(runwayElement);
-                            break;
-                        case "Heading":
-                            gb.Append(headingElement);
-                            break;
-                        case "Waypoint":
-                            gb.Append(WaypointElement);
-                            break;
-                        default:
-                            gb.Append(token); break;
-                    }
-                }
-                else if (token.StartsWith("<") && token.EndsWith(">"))
-                {
-                    // Handle choices
-                    string[] choices = token.Trim('<', '>').Split('|');
-                    gb.Append(new Choices(choices));
-                }
-                else if (token.StartsWith("[") && token.EndsWith("]"))
-                {
-                    // Handle optional sections, with the optional content appearing zero or one time
-                    string optionalContent = token.Trim('[', ']');
-                    gb.Append(new GrammarBuilder(optionalContent, 0, 1));
-                }
-
-                // Update last index
-                lastIndex = match.Index + match.Length;
+                gb.Culture = cultureInfo;
+                return new Grammar(gb);
             }
 
-            // Append any remaining text after the last match
-            if (lastIndex < csr.Length)
+            public static int CountOccurrences(string stringA, string stringB)
             {
-                string text = csr.Substring(lastIndex).Trim();
-                if (!string.IsNullOrEmpty(text))
+                if (string.IsNullOrEmpty(stringB))
                 {
-                    gb.Append(text);
+                    return 0;
                 }
+
+                string pattern = Regex.Escape(stringB);
+                return Regex.Matches(stringA, pattern).Count;
             }
-
-            gb.Culture = cultureInfo;
-            return new Grammar(gb);
         }
-
-        public static int CountOccurrences(string stringA, string stringB)
-        {
-            if (string.IsNullOrEmpty(stringB))
-            {
-                return 0;
-            }
-
-            string pattern = Regex.Escape(stringB);
-            return Regex.Matches(stringA, pattern).Count;
-        }
+        
     }
 }

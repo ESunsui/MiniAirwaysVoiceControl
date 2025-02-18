@@ -5,10 +5,11 @@ using NAudio.CoreAudioApi;
 
 namespace MiniAirwaysVoiceControl
 {
-    internal class GrammaVoiceRecog
+    public class GrammaVoiceRecog
     {
         SpeechRecognitionEngine recognizer;
 
+        public event EventHandler<string> OnSRInited;
         public event EventHandler<string> OnSRPackageNotInstalled;
         public event EventHandler<string> OnSRInitFailed;
 
@@ -21,12 +22,29 @@ namespace MiniAirwaysVoiceControl
         public event EventHandler<string> OnSpeechRejected;
         public event EventHandler<(string, string)> OnSpeechRecognized;
 
+        public enum ResultType
+        {
+            Hypothesized,
+            Rejected,
+            Recognized
+        }
+
+        public enum GrammarType
+        {
+            Invalid,
+            AircraftStat,
+            AircraftTakeoff,
+            AircraftLanding,
+            AircraftFlyHeading,
+            AircraftVectorToWaypoint
+        }
 
         public void Init(string language)
         {
             try
             {
                 recognizer = new SpeechRecognitionEngine(new CultureInfo(language));
+                OnSRInited?.Invoke(this, language);
             }
             catch (System.ArgumentException e)
             {
@@ -103,6 +121,13 @@ namespace MiniAirwaysVoiceControl
             }
         }
 
+        public void SetRunningState(bool state)
+        {
+            if (state)
+                Start();
+            else
+                Stop();
+        }
         public void Start()
         {
             // Start asynchronous, continuous speech recognition.  

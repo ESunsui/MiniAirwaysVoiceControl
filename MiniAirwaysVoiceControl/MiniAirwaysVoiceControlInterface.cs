@@ -1,28 +1,38 @@
-﻿namespace MiniAirwaysVoiceControl
+﻿using Newtonsoft.Json;
+using static MiniAirwaysVoiceControl.GrammaVoiceRecog;
+
+namespace MiniAirwaysVoiceControl
 {
     public class MiniAirwaysVoiceControlInterface
     {
-        public interface IMiniAirwaysVoiceControlInterface
+        public interface IMiniAirwaysSrSeralizeable
         {
-
+            public Message Seralize()
+            {
+                return new Message()
+                {
+                    type = this.GetType().Name,
+                    content = JsonConvert.SerializeObject(this)
+                };
+            }
         }
-        public class SREngineRunningState : IMiniAirwaysVoiceControlInterface
+        public class SREngineRunningState : IMiniAirwaysSrSeralizeable
         {
             public bool IsRunning { get; set; }
         }
 
-        public class SREngineLanguage : IMiniAirwaysVoiceControlInterface
+        public class SREngineLanguage : IMiniAirwaysSrSeralizeable
         {
             public string Language { get; set; }
         }
 
-        public class GrammarSource : IMiniAirwaysVoiceControlInterface
+        public class GrammarSource : IMiniAirwaysSrSeralizeable
         {
             public string[] Airlines { get; set; }
             public string[] NamedWaypoints { get; set; }
         }
 
-        public class GrammarStruct : IMiniAirwaysVoiceControlInterface
+        public class GrammarStruct : IMiniAirwaysSrSeralizeable
         {
             public string[] AircraftStatRules { get; set; }
             public string[] AircraftTakeoffRules { get; set; }
@@ -31,7 +41,7 @@
             public string[] AircraftVectorToWaypointRules { get; set; }
         }
 
-        public class LanguageInitResult : IMiniAirwaysVoiceControlInterface
+        public class LanguageInitResult : IMiniAirwaysSrSeralizeable
         {
             public string Language { get; set; }
             public bool IsSuccess { get; set; }
@@ -39,23 +49,21 @@
             public string ErrorMessage { get; set; }
         }
 
-        public class InputDeviceConnectResult : IMiniAirwaysVoiceControlInterface
+        public class InputDeviceConnectResult : IMiniAirwaysSrSeralizeable
         {
             public bool IsConnected { get; set; }
             public string Message { get; set; }
         }
 
-        public class SRResult : IMiniAirwaysVoiceControlInterface
+        public class SRResult : IMiniAirwaysSrSeralizeable
         { 
-            public enum ResultType
-            {
-                Hypothesized,
-                Rejected,
-                Recognized
-            }
-
             public ResultType Type { get; set; }
+            public GrammarType Grammar { get; set; }
             public string Message { get; set; }
+            public string Aircraft { get; set; }
+            public string Waypoint { get; set; }
+            public string Heading { get; set; }
+            public string Runway { get; set; }
         }
     }
 }

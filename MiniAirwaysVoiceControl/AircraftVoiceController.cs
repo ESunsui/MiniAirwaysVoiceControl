@@ -9,15 +9,15 @@ namespace MiniAirwaysVoiceControl
         public string type;
         public string content;
     }
-    internal class AircraftVoiceController
+    public class AircraftVoiceController
     {
         public event EventHandler<bool> OnVoiceEngineRunningStateChanged;
         public event EventHandler<string> OnVoiceEngineLanguageChanged;
-        public event EventHandler<(string[], string[])> OnGrammarSourceChanged;
+        public event EventHandler<GrammarSource> OnGrammarSourceChanged;
         public event EventHandler<GrammarStruct> OnGrammarStructChanged;
         public event EventHandler<bool> OnConnectToInputDevice;
         NamedPipeClient namedPipeClient;
-        List<Message> messages = new();
+        Queue<Message> messages = new();
         CancellationTokenSource cts;
 
 
@@ -76,7 +76,7 @@ namespace MiniAirwaysVoiceControl
                         GrammarSource? grammarSource = JsonConvert.DeserializeObject<GrammarSource>(msg.content);
                         if (grammarSource != null)
                         {
-                            OnGrammarSourceChanged?.Invoke(this, (grammarSource.Airlines, grammarSource.NamedWaypoints));
+                            OnGrammarSourceChanged?.Invoke(this, new GrammarSource() { Airlines = grammarSource.Airlines, NamedWaypoints = grammarSource.NamedWaypoints });
                         }
                         break;
                     case nameof(GrammarStruct):
@@ -96,24 +96,21 @@ namespace MiniAirwaysVoiceControl
             {
                 while (!ct.IsCancellationRequested)
                 {
-                    if (namedPipeClient.IsConnected && messages.Count > 0)
+                    if (namedPipeClient.IsConnected && messages.TryDequeue(out Message result))
                     {
-
-                        Message message = messages[0];
-                        messages.RemoveAt(0);
-                        await namedPipeClient.Send(JsonConvert.SerializeObject(message));
+                        await namedPipeClient.Send(JsonConvert.SerializeObject(result));
                     }
                     else
                     {
-                        await Task.Delay(100);
+                        await Task.Delay(10);
                     }
                 }
             });
         }
 
-        public void Send(IMiniAirwaysVoiceControlInterface msg)
+        public void Send(IMiniAirwaysSrSeralizeable msg)
         {
-            messages.Add(new Message() { type = msg.GetType().Name, content = JsonConvert.SerializeObject(msg, type:msg.GetType(), null) });
+            messages.Enqueue(msg.Seralize());
         }
     }
 }

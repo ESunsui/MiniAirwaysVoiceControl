@@ -2,6 +2,7 @@
 using System.Speech.Recognition;
 using SpeechRecognitionApp;
 using Windows.Devices.Sensors;
+using static MiniAirwaysVoiceControl.GrammaVoiceRecog;
 using static MiniAirwaysVoiceControl.MiniAirwaysVoiceControlInterface;
 
 namespace MiniAirwaysVoiceControl
@@ -33,45 +34,124 @@ namespace MiniAirwaysVoiceControl
 
         static async Task Init()
         {
+            GrammarBuilder.Init();
             await PipeClient.Connect();
             VoiceControl.Attach(PipeClient);
-            GrammarBuilder.Init();
 
-            VoiceControl.OnConnectToInputDevice += (object _, bool IsConnected) =>
+            #region Voice Controller Handlers
+
+            VoiceControl.OnConnectToInputDevice += (object? _, bool IsConnected) => 
+            { 
+                VoiceRecog.SetDefaultInput(); 
+            };
+
+            VoiceControl.OnVoiceEngineLanguageChanged += (object? _, string Language) => 
+            { 
+                VoiceRecog.Init(Language); 
+            };
+
+            VoiceControl.OnGrammarStructChanged += (object? _, GrammarStruct Grammar) => 
+            { 
+                GrammarBuilder.SetRules(Grammar); 
+            };
+
+            VoiceControl.OnVoiceEngineRunningStateChanged += (object? _, bool IsRunning) => 
+            { 
+                VoiceRecog.SetRunningState(IsRunning); 
+            };
+
+            VoiceControl.OnGrammarSourceChanged += (object? _, GrammarSource grammarSource) => 
             {
-                if (IsConnected)
+                var grammars = GrammarBuilder.CreateGrammar(grammarSource.Airlines, grammarSource.NamedWaypoints);
+                VoiceRecog.SetGrammar(grammars); 
+            };
+
+            #endregion
+
+            #region Speech Recog Handlers
+
+            VoiceRecog.OnInputDeviceSet += (object? _, string deviceName) =>
+            {
+                VoiceControl.Send(new InputDeviceConnectResult() 
                 {
-                    VoiceRecog.SetDefaultInput();
-                }
+                    IsConnected = true,
+                    Message = deviceName
+                });
             };
 
-            VoiceControl.OnVoiceEngineRunningStateChanged += (object _, bool IsRunning) =>
+            VoiceRecog.OnInputDeviceSetFailed += (object? _, string error) =>
             {
-                if (IsRunning)
+                VoiceControl.Send(new InputDeviceConnectResult()
                 {
-                    VoiceRecog.Start();
-                }
-                else
+                    IsConnected = false,
+                    Message = error
+                });
+            };
+
+            VoiceRecog.OnSRInited += (object? _, string lang) =>
+            {
+                VoiceControl.Send( new LanguageInitResult()
                 {
-                    VoiceRecog.Stop();
-                }
+                    Language = lang,
+                    IsSuccess = true,
+                    SRPackageNotInstalled = false,
+                    ErrorMessage = ""
+                });
             };
 
-            VoiceControl.OnVoiceEngineLanguageChanged += (object _, string Language) =>
+            VoiceRecog.OnSRPackageNotInstalled += (object? _, string lang) =>
             {
-                VoiceRecog.Init(Language);
+                VoiceControl.Send(new LanguageInitResult()
+                {
+                    Language = lang,
+                    IsSuccess = false,
+                    SRPackageNotInstalled = true,
+                    ErrorMessage = ""
+                });
             };
 
-            VoiceControl.OnGrammarStructChanged += (object _, GrammarStruct Grammar) =>
+            VoiceRecog.OnSRInitFailed += (object? _, string error) =>
             {
-                GrammarBuilder.SetRules(Grammar);
+                VoiceControl.Send(new LanguageInitResult()
+                {
+                    Language = "",
+                    IsSuccess = false,
+                    SRPackageNotInstalled = false,
+                    ErrorMessage = error
+                });
             };
 
-            VoiceControl.OnGrammarSourceChanged += (object sender, (string[] Airlines, string[] NamedWaypoints) GrammarSource) =>
+            VoiceRecog.OnSpeechRecogRunningStateChanged += (object? _, bool IsRunning) =>
             {
-                Grammar[] grammars = GrammarBuilder.CreateGrammar(GrammarSource.Airlines, GrammarSource.NamedWaypoints);
-                VoiceRecog.SetGrammar(grammars);
+                VoiceControl.Send(new SREngineRunningState()
+                {
+                    IsRunning = IsRunning
+                });
             };
+
+            VoiceRecog.OnSpeechHypothesized += (object? _, string Hypothesis) =>
+            {
+                VoiceControl.Send(
+                    GrammarBuilder.ExtractGrammar(ResultType.Hypothesized, "N/A", Hypothesis)
+                );
+            };
+
+            VoiceRecog.OnSpeechRecognized += (object? _, (string Grammar, string Result) RecogResult) =>
+            {
+                VoiceControl.Send(
+                    GrammarBuilder.ExtractGrammar(ResultType.Recognized, RecogResult.Grammar, RecogResult.Result)
+                );
+            };
+
+            VoiceRecog.OnSpeechRejected += (object? _, string __) =>
+            {
+                VoiceControl.Send(
+                    GrammarBuilder.ExtractGrammar(ResultType.Rejected, null, null)
+                );
+            };
+
+            #endregion
+
         }
     }
 }
