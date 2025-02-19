@@ -22,10 +22,10 @@ namespace MiniAirwaysVoiceControl
         List<string> AirlineCallsigns = new();
         List<string> NamedWaypoints = new();
 
-        const string AircraftElement = "{Aircraft}";
-        const string NamedWaypointElement = "{Waypoint}";
-        const string RunwayElement = "{Runway}";
-        const string HeadingElement = "{Heading}";
+        const string AircraftElement = "{AIRCRAFT}";
+        const string NamedWaypointElement = "{WAYPOINT}";
+        const string RunwayElement = "{RUNWAY}";
+        const string HeadingElement = "{HEADING}";
 
         public void Init()
         {
@@ -33,12 +33,12 @@ namespace MiniAirwaysVoiceControl
                 "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "zero" 
             });
             RunwayDirectionChoice = new Choices(new string[] { 
-                "Left", "Right", "Center" 
+                "left", "right", "center" 
             });
             AlphabetChoice = new Choices(new string[] { 
-                "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India",
-                "Juliet", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo",
-                "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu" 
+                "alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india",
+                "juliet", "kilo", "lima", "mike", "november", "oscar", "papa", "quebec", "romeo",
+                "sierra", "tango", "uniform", "victor", "whiskey", "x-ray", "yankee", "zulu"
             });
         }
 
@@ -93,16 +93,15 @@ namespace MiniAirwaysVoiceControl
 
             GrammarBuilder AircraftElement = new GrammarBuilder();
             AircraftElement.Append(new GrammarBuilder(AirlineChoice));
-            AircraftElement.Append(new GrammarBuilder("Airline", 0, 1));
-            AircraftElement.Append(new GrammarBuilder("Flight", 0, 1));
-            AircraftElement.Append(new GrammarBuilder(NumberChoices, 2, 4));
+            AircraftElement.Append(new GrammarBuilder(NumberChoices, 3, 3));
 
             GrammarBuilder NamedWaypointElement = new GrammarBuilder();
-            NamedWaypointElement.Append(new GrammarBuilder("Waypoint", 0, 1));
+            NamedWaypointElement.Append(new GrammarBuilder("waypoint", 0, 1));
             NamedWaypointElement.Append(new GrammarBuilder(NamedWaypointChoice));
 
             GrammarBuilder NormalWaypointElement = new GrammarBuilder();
-            NormalWaypointElement.Append(new GrammarBuilder(AlphabetChoice, 1, 3));
+            NamedWaypointElement.Append(new GrammarBuilder("waypoint", 0, 1));
+            NormalWaypointElement.Append(new GrammarBuilder(AlphabetChoice, 3, 3));
 
             GrammarBuilder WaypointElement = new GrammarBuilder(new Choices(NamedWaypointElement, NormalWaypointElement));
 
@@ -112,7 +111,7 @@ namespace MiniAirwaysVoiceControl
             HeadingElement.Append(NumberChoices);
 
             GrammarBuilder RunwayElement = new GrammarBuilder();
-            RunwayElement.Append(new GrammarBuilder("Runway", 0, 1));
+            RunwayElement.Append(new GrammarBuilder("runway", 0, 1));
             RunwayElement.Append(new GrammarBuilder(NumberChoices, 1, 2));
             RunwayElement.Append(new GrammarBuilder(RunwayDirectionChoice, 0, 1));
 
@@ -318,16 +317,16 @@ namespace MiniAirwaysVoiceControl
                         string element = token.Trim('{', '}');
                         switch (element)
                         {
-                            case "Aircraft":
+                            case "AIRCRAFT":
                                 gb.Append(aircraftElement);
                                 break;
-                            case "Runway":
+                            case "RUNWAY":
                                 gb.Append(runwayElement);
                                 break;
-                            case "Heading":
+                            case "HEADING":
                                 gb.Append(headingElement);
                                 break;
-                            case "Waypoint":
+                            case "WAYPOINT":
                                 gb.Append(WaypointElement);
                                 break;
                             default:

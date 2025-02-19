@@ -34,7 +34,11 @@ namespace MiniAirwaysVoiceControl
             // Keep the console window open.  
             while (true)
             {
-                Console.ReadLine();
+                string t = Console.ReadLine();
+                if (t.Length > 0)
+                {
+                    VoiceRecog.SimulateAsync(t);
+                }
             }
         }
 
