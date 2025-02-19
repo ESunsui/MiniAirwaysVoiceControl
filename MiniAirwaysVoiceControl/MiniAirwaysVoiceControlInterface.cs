@@ -55,6 +55,12 @@ namespace MiniAirwaysVoiceControl
             public string Message { get; set; }
         }
 
+        public class GrammarInitResult : IMiniAirwaysSrSeralizeable
+        {
+            public bool IsSuccess { get; set; }
+            public string ErrorMessage { get; set; }
+        }
+
         public class SRResult : IMiniAirwaysSrSeralizeable
         { 
             public ResultType Type { get; set; }

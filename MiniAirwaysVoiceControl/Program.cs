@@ -14,12 +14,20 @@ namespace MiniAirwaysVoiceControl
         static NamedPipeClient PipeClient;
         static AircraftVoiceController VoiceControl;
 
+        static GrammarSource testGrammarSource;
+
         static void Main(string[] args)
         {
             VoiceRecog = new GrammaVoiceRecog();
             GrammarBuilder = new AircraftVoiceControlGrammarBuilder();
             PipeClient = new NamedPipeClient();
             VoiceControl = new AircraftVoiceController();
+
+            testGrammarSource = new GrammarSource() 
+            {
+                Airlines = new string[] { "United", "Delta" },
+                NamedWaypoints = new string[] { "Alpha", "Bravo", "Charlie", "Delta" }
+            };
 
             Init();
 
@@ -52,7 +60,27 @@ namespace MiniAirwaysVoiceControl
 
             VoiceControl.OnGrammarStructChanged += (object? _, GrammarStruct Grammar) => 
             { 
-                GrammarBuilder.SetRules(Grammar); 
+                GrammarBuilder.SetRules(Grammar);
+                try
+                {
+                    var grammars = GrammarBuilder.CreateGrammar(testGrammarSource.Airlines, testGrammarSource.NamedWaypoints);
+                    VoiceRecog.SetGrammar(grammars);
+                    VoiceControl.Send(new GrammarInitResult()
+                    {
+                        IsSuccess = true,
+                        ErrorMessage = ""
+                    });
+                    VoiceRecog.ClearGrammar();
+                }
+                catch (Exception ex)
+                {
+                    VoiceControl.Send(new GrammarInitResult()
+                    {
+                        IsSuccess = false,
+                        ErrorMessage = ex.Message
+                    });
+                }
+                
             };
 
             VoiceControl.OnVoiceEngineRunningStateChanged += (object? _, bool IsRunning) => 
@@ -62,8 +90,24 @@ namespace MiniAirwaysVoiceControl
 
             VoiceControl.OnGrammarSourceChanged += (object? _, GrammarSource grammarSource) => 
             {
-                var grammars = GrammarBuilder.CreateGrammar(grammarSource.Airlines, grammarSource.NamedWaypoints);
-                VoiceRecog.SetGrammar(grammars); 
+                try
+                {
+                    var grammars = GrammarBuilder.CreateGrammar(grammarSource.Airlines, grammarSource.NamedWaypoints);
+                    VoiceRecog.SetGrammar(grammars);
+                    VoiceControl.Send(new GrammarInitResult()
+                    {
+                        IsSuccess = true,
+                        ErrorMessage = ""
+                    });
+                }
+                catch (Exception ex)
+                {
+                    VoiceControl.Send(new GrammarInitResult()
+                    {
+                        IsSuccess = false,
+                        ErrorMessage = ex.Message
+                    });
+                }
             };
 
             #endregion
@@ -90,7 +134,7 @@ namespace MiniAirwaysVoiceControl
 
             VoiceRecog.OnSRInited += (object? _, string lang) =>
             {
-                VoiceControl.Send( new LanguageInitResult()
+                VoiceControl.Send(new LanguageInitResult()
                 {
                     Language = lang,
                     IsSuccess = true,

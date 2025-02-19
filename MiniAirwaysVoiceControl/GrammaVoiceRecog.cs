@@ -62,8 +62,6 @@ namespace MiniAirwaysVoiceControl
                 }
             }
             
-            
-
             // Add a handler for the speech recognized event.  
             recognizer.SpeechDetected +=
             new EventHandler<SpeechDetectedEventArgs>(
@@ -111,12 +109,14 @@ namespace MiniAirwaysVoiceControl
                     var defaultDevice = enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Console);
 
                     Console.WriteLine("Default Audio Input Device: " + defaultDevice.FriendlyName);
+                    OnInputDeviceSet?.Invoke(this, defaultDevice.FriendlyName);
                 }
                 return true;
             }
             catch (Exception e)
             {
                 Console.WriteLine("Error setting input: " + e.Message);
+                OnInputDeviceSetFailed?.Invoke(this, e.Message);
                 return false;
             }
         }

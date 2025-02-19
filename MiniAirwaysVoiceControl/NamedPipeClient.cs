@@ -56,6 +56,12 @@ namespace SpeechRecognitionApp
                     try
                     {
                         string message = await reader.ReadLineAsync();
+                        if (message == null)
+                        {
+                            Console.WriteLine("Mini Airways disconnected.");
+                            Close();
+                            break;
+                        }
                         Console.WriteLine(message);
                         OnMessageReceived.Invoke(message);
                     }
