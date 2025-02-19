@@ -191,10 +191,10 @@ namespace MiniAirwaysVoiceControl
                 );
             };
 
-            VoiceRecog.OnSpeechRejected += (object? _, string __) =>
+            VoiceRecog.OnSpeechRejected += (object? _, (float Confidence, string Grammar, string Result) RecogResult) =>
             {
                 VoiceControl.Send(
-                    GrammarBuilder.ExtractGrammar(ResultType.Rejected, null, null)
+                    GrammarBuilder.ExtractGrammar(RecogResult.Confidence > 0.3f ? ResultType.Recognized : ResultType.Rejected, RecogResult.Grammar, RecogResult.Result)
                 );
             };
 

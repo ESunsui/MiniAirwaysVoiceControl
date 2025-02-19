@@ -19,7 +19,7 @@ namespace MiniAirwaysVoiceControl
         public event EventHandler<bool> OnSpeechRecogRunningStateChanged;
 
         public event EventHandler<string> OnSpeechHypothesized;
-        public event EventHandler<string> OnSpeechRejected;
+        public event EventHandler<(float, string, string)> OnSpeechRejected;
         public event EventHandler<(string, string)> OnSpeechRecognized;
 
         public enum ResultType
@@ -44,6 +44,7 @@ namespace MiniAirwaysVoiceControl
             try
             {
                 recognizer = new SpeechRecognitionEngine(new CultureInfo(language));
+
                 OnSRInited?.Invoke(this, language);
             }
             catch (System.ArgumentException e)
@@ -205,7 +206,7 @@ namespace MiniAirwaysVoiceControl
 
             Console.WriteLine("\tG: {0}, R: {1}",
               grammarName, resultText);
-            OnSpeechRejected?.Invoke(this, null);
+            OnSpeechRejected?.Invoke(this, (e.Result.Confidence, grammarName, resultText));
         }
 
         // Handle the SpeechRecognized event.  
