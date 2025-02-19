@@ -36,7 +36,8 @@ namespace MiniAirwaysVoiceControl
             AircraftTakeoff,
             AircraftLanding,
             AircraftFlyHeading,
-            AircraftVectorToWaypoint
+            AircraftVectorToDestinationWaypoint,
+            AircraftVectorToNormalWaypoint,
         }
 
         public void Init(string language)

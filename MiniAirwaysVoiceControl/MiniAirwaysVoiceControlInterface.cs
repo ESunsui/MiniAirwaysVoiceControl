@@ -38,7 +38,8 @@ namespace MiniAirwaysVoiceControl
             public string[] AircraftTakeoffRules { get; set; }
             public string[] AircraftLandingRules { get; set; }
             public string[] AircraftFlyHeadingRules { get; set; }
-            public string[] AircraftVectorToWaypointRules { get; set; }
+            public string[] AircraftVectorToDestinationWaypointRules { get; set; }
+            public string[] AircraftVectorToNormalWaypointRules { get; set; }
         }
 
         public class LanguageInitResult : IMiniAirwaysSrSeralizeable

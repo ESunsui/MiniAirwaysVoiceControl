@@ -17,7 +17,8 @@ namespace MiniAirwaysVoiceControl
         List<string> AircraftTakeoffRuleBase = new();
         List<string> AircraftLandingRuleBase = new();
         List<string> AircraftFlyHeadingRuleBase = new();
-        List<string> AircraftVectorToWaypointRuleBase = new();
+        List<string> AircraftVectorToDestinationWaypointRuleBase = new();
+        List<string> AircraftVectorToNormalWaypointRuleBase = new();
 
         List<string> AirlineCallsigns = new();
         List<string> NamedWaypoints = new();
@@ -48,7 +49,8 @@ namespace MiniAirwaysVoiceControl
             AircraftTakeoffRuleBase = new();
             AircraftLandingRuleBase = new();
             AircraftFlyHeadingRuleBase = new();
-            AircraftVectorToWaypointRuleBase = new();
+            AircraftVectorToDestinationWaypointRuleBase = new();
+            AircraftVectorToNormalWaypointRuleBase = new();
 
             foreach (string rule in grammarStruct.AircraftStatRules)
             {
@@ -74,10 +76,16 @@ namespace MiniAirwaysVoiceControl
                     AircraftFlyHeadingRuleBase.Add(rule);
             }
 
-            foreach (string rule in grammarStruct.AircraftVectorToWaypointRules)
+            foreach (string rule in grammarStruct.AircraftVectorToDestinationWaypointRules)
             {
                 if (CSRParser.CountOccurrences(rule, AircraftElement) == 1 && CSRParser.CountOccurrences(rule, NamedWaypointElement) == 1)
-                    AircraftVectorToWaypointRuleBase.Add(rule);
+                    AircraftVectorToDestinationWaypointRuleBase.Add(rule);
+            }
+
+            foreach (string rule in grammarStruct.AircraftVectorToNormalWaypointRules)
+            {
+                if (CSRParser.CountOccurrences(rule, AircraftElement) == 1 && CSRParser.CountOccurrences(rule, NamedWaypointElement) == 1)
+                    AircraftVectorToNormalWaypointRuleBase.Add(rule);
             }
         }
 
@@ -96,14 +104,10 @@ namespace MiniAirwaysVoiceControl
             AircraftElement.Append(new GrammarBuilder(NumberChoices, 3, 3));
 
             GrammarBuilder NamedWaypointElement = new GrammarBuilder();
-            NamedWaypointElement.Append(new GrammarBuilder("waypoint", 0, 1));
             NamedWaypointElement.Append(new GrammarBuilder(NamedWaypointChoice));
 
             GrammarBuilder NormalWaypointElement = new GrammarBuilder();
-            NamedWaypointElement.Append(new GrammarBuilder("waypoint", 0, 1));
             NormalWaypointElement.Append(new GrammarBuilder(AlphabetChoice, 3, 3));
-
-            GrammarBuilder WaypointElement = new GrammarBuilder(new Choices(NamedWaypointElement, NormalWaypointElement));
 
             GrammarBuilder HeadingElement = new GrammarBuilder();
             HeadingElement.Append(NumberChoices);
@@ -111,14 +115,13 @@ namespace MiniAirwaysVoiceControl
             HeadingElement.Append(NumberChoices);
 
             GrammarBuilder RunwayElement = new GrammarBuilder();
-            RunwayElement.Append(new GrammarBuilder("runway", 0, 1));
             RunwayElement.Append(new GrammarBuilder(NumberChoices, 1, 2));
             RunwayElement.Append(new GrammarBuilder(RunwayDirectionChoice, 0, 1));
 
             // No Command, Show flying path
             for(int i = 0; i < AircraftGetStatusRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftGetStatusRuleBase[i], AircraftElement, RunwayElement, HeadingElement, WaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftGetStatusRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
                 grammar.Name = "AGS" + i.ToString();
                 grammars.Add(grammar);
             }
@@ -126,7 +129,7 @@ namespace MiniAirwaysVoiceControl
             // Aircraft Takeoff
             for (int i = 0; i < AircraftTakeoffRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftTakeoffRuleBase[i], AircraftElement, RunwayElement, HeadingElement, WaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftTakeoffRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
                 grammar.Name = "ATO" + i.ToString();
                 grammars.Add(grammar);
             }
@@ -134,15 +137,23 @@ namespace MiniAirwaysVoiceControl
             // Aircraft Land
             for (int i = 0; i < AircraftLandingRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftLandingRuleBase[i], AircraftElement, RunwayElement, HeadingElement, WaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftLandingRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
                 grammar.Name = "ALD" + i.ToString();
                 grammars.Add(grammar);
             }
 
-            // Aircraft Vector to Waypoint
-            for (int i = 0; i < AircraftVectorToWaypointRuleBase.Count; i++)
+            // Aircraft Vector to Destination Waypoint
+            for (int i = 0; i < AircraftVectorToDestinationWaypointRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftVectorToWaypointRuleBase[i], AircraftElement, RunwayElement, HeadingElement, WaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftVectorToDestinationWaypointRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
+                grammar.Name = "AVD" + i.ToString();
+                grammars.Add(grammar);
+            }
+
+            // Aircraft Vector to Normal Waypoint
+            for (int i = 0; i < AircraftVectorToNormalWaypointRuleBase.Count; i++)
+            {
+                Grammar grammar = CSRParser.ParseCSR(AircraftVectorToNormalWaypointRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
                 grammar.Name = "AVW" + i.ToString();
                 grammars.Add(grammar);
             }
@@ -150,7 +161,7 @@ namespace MiniAirwaysVoiceControl
             // Aircraft FlyHeading
             for (int i = 0; i < AircraftFlyHeadingRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftFlyHeadingRuleBase[i], AircraftElement, RunwayElement, HeadingElement, WaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftFlyHeadingRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
                 grammar.Name = "AFH" + i.ToString();
                 grammars.Add(grammar);
             }
@@ -262,8 +273,11 @@ namespace MiniAirwaysVoiceControl
                 case "AFH":
                     gt = GrammarType.AircraftFlyHeading;
                     break;
+                case "AVD":
+                    gt = GrammarType.AircraftVectorToDestinationWaypoint;
+                    break;
                 case "AVW":
-                    gt = GrammarType.AircraftVectorToWaypoint;
+                    gt = GrammarType.AircraftVectorToNormalWaypoint;
                     break;
                 default:
                     break;
@@ -288,7 +302,7 @@ namespace MiniAirwaysVoiceControl
 
         public class CSRParser
         {
-            public static Grammar ParseCSR(string csr, GrammarBuilder aircraftElement, GrammarBuilder runwayElement, GrammarBuilder headingElement, GrammarBuilder WaypointElement, CultureInfo cultureInfo)
+            public static Grammar ParseCSR(string csr, GrammarBuilder aircraftElement, GrammarBuilder runwayElement, GrammarBuilder headingElement, GrammarBuilder destinationWaypointElement, GrammarBuilder normalWaypointElement, CultureInfo cultureInfo)
             {
                 GrammarBuilder gb = new GrammarBuilder();
                 int lastIndex = 0;
@@ -326,8 +340,11 @@ namespace MiniAirwaysVoiceControl
                             case "HEADING":
                                 gb.Append(headingElement);
                                 break;
-                            case "WAYPOINT":
-                                gb.Append(WaypointElement);
+                            case "WAYPOINT_D":
+                                gb.Append(destinationWaypointElement);
+                                break;
+                            case "WAYPOINT_N":
+                                gb.Append(normalWaypointElement);
                                 break;
                             default:
                                 gb.Append(token); break;
