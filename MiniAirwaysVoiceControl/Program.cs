@@ -10,7 +10,7 @@ namespace MiniAirwaysVoiceControl
     public class Program
     {
         static GrammaVoiceRecog VoiceRecog;
-        static AircraftVoiceControlGrammarBuilder GrammarBuilder;
+        static AircraftGrammarBuilder GrammarBuilder;
         static NamedPipeClient PipeClient;
         static AircraftVoiceController VoiceControl;
 
@@ -19,13 +19,14 @@ namespace MiniAirwaysVoiceControl
         static void Main(string[] args)
         {
             VoiceRecog = new GrammaVoiceRecog();
-            GrammarBuilder = new AircraftVoiceControlGrammarBuilder();
+            GrammarBuilder = new AircraftGrammarBuilder();
             PipeClient = new NamedPipeClient();
             VoiceControl = new AircraftVoiceController();
 
             testGrammarSource = new GrammarSource() 
             {
                 Airlines = new string[] { "United", "Delta" },
+                AirlineCodes = new string[] { "United", "Delta" },
                 NamedWaypoints = new string[] { "Alpha", "Bravo", "Charlie", "Delta" }
             };
 
@@ -67,7 +68,7 @@ namespace MiniAirwaysVoiceControl
                 GrammarBuilder.SetRules(Grammar);
                 try
                 {
-                    var grammars = GrammarBuilder.CreateGrammar(testGrammarSource.Airlines, testGrammarSource.NamedWaypoints);
+                    var grammars = GrammarBuilder.CreateGrammar(testGrammarSource);
                     VoiceRecog.SetGrammar(grammars);
                     VoiceControl.Send(new GrammarInitResult()
                     {
@@ -96,7 +97,7 @@ namespace MiniAirwaysVoiceControl
             {
                 try
                 {
-                    var grammars = GrammarBuilder.CreateGrammar(grammarSource.Airlines, grammarSource.NamedWaypoints);
+                    var grammars = GrammarBuilder.CreateGrammar(grammarSource);
                     VoiceRecog.SetGrammar(grammars);
                     VoiceControl.Send(new GrammarInitResult()
                     {

@@ -1,0 +1,69 @@
+// MiniAirways Voice Control Grammar Configuration
+
+# CSR Version = 1
+
+// This document is used to customize your voice control preferences. Before making any changes, please back up the file, understand the specific meanings of the identifiers, and avoid modifying unrelated sections.
+// Like typical code documentation, lines starting with "//" will be ignored. However, lines starting with "#" will not be ignored.
+
+// In this document, we use three types of symbols to describe the occurrence of corresponding morphemes. Morphemes must not be nested.
+
+// Morphemes enclosed in square brackets [___] are optional. They can appear 0 or 1 time in a sentence. For example, if the grammar is "A[B]C", both "ABC" and "AC" will be accepted.
+
+// Morphemes enclosed in angle brackets <___> are choice morphemes. Options are separated by "|", and exactly one option must be spoken. For example, if the grammar is "N<A|B|C>", then "NA", "NB", and "NC" will be accepted, while "N", "NAB", and "ND" will be rejected.
+
+// Morphemes enclosed in curly braces {___} are predefined and critical for control. They represent the subject, action, or purpose of the voice command. There are four predefined morphemes available, but you cannot use them arbitrarily.
+// Each control grammar has specific predefined morpheme requirements. Ensure that the corresponding morpheme appears exactly once.
+// The morphemes and their meanings are as follows:
+//  {AIRCRAFT}  refers to the aircraft call sign.           e.g. ChinaAir three one five
+//  {RUNWAY}    refers to the runway name.                  e.g. runway one eight [left], runway zero nine
+//  {HEADING}   refers to the heading.                      e.g. zero nine zero
+//  {WAYPOINT_D}  refers to the destination waypoint name.  e.g. <LINDY|NOMAD>
+//  {WAYPOINT_N}  refers to a normal waypoint name.         e.g. charlie one five
+
+// Command the aircraft to report its current flight status
+! Require {AIRCRAFT}
+# StartRegion AGS
+
+{AIRCRAFT} what is your next action
+
+# EndRegion
+
+// Command the aircraft to take off
+! Require {AIRCRAFT} {RUNWAY}
+# StartRegion ATO
+
+{AIRCRAFT} cleared for takeoff {RUNWAY}
+
+# EndRegion
+
+// Command the aircraft to land
+! Require {AIRCRAFT} {RUNWAY}
+# StartRegion ALD
+
+{AIRCRAFT} cleared to land {RUNWAY}
+
+# EndRegion
+
+// Command the aircraft to fly to the destination waypoint
+! Require {AIRCRAFT} {WAYPOINT_D}
+# StartRegion AVD
+
+{AIRCRAFT} <direct to|proceed to> {WAYPOINT_D}
+
+# EndRegion
+
+// Command the aircraft to fly to a waypoint
+! Require {AIRCRAFT} {WAYPOINT_N}
+# StartRegion AVW
+
+{AIRCRAFT} vector to waypoint {WAYPOINT_N}
+
+# EndRegion
+
+// Command the aircraft to set a specific heading
+! Require {AIRCRAFT} {HEADING}
+# StartRegion AFH
+
+{AIRCRAFT} fly heading {HEADING}
+
+# EndRegion

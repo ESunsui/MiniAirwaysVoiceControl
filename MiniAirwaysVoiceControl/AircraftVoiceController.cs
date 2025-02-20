@@ -76,7 +76,7 @@ namespace MiniAirwaysVoiceControl
                         GrammarSource? grammarSource = JsonConvert.DeserializeObject<GrammarSource>(msg.content);
                         if (grammarSource != null)
                         {
-                            OnGrammarSourceChanged?.Invoke(this, new GrammarSource() { Airlines = grammarSource.Airlines, NamedWaypoints = grammarSource.NamedWaypoints });
+                            OnGrammarSourceChanged?.Invoke(this, new GrammarSource() { Airlines = grammarSource.Airlines, AirlineCodes = grammarSource.AirlineCodes, NamedWaypoints = grammarSource.NamedWaypoints });
                         }
                         break;
                     case nameof(GrammarStruct):

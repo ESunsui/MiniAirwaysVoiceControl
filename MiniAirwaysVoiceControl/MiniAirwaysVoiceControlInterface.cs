@@ -29,6 +29,7 @@ namespace MiniAirwaysVoiceControl
         public class GrammarSource : IMiniAirwaysSrSeralizeable
         {
             public string[] Airlines { get; set; }
+            public string[] AirlineCodes { get; set; }
             public string[] NamedWaypoints { get; set; }
         }
 
