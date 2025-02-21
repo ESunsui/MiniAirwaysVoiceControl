@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Speech.Recognition;
+using System.Text;
 using System.Text.RegularExpressions;
 using static MiniAirwaysVoiceControl.GrammaVoiceRecog;
 using static MiniAirwaysVoiceControl.MiniAirwaysVoiceControlInterface;
@@ -9,9 +10,11 @@ namespace MiniAirwaysVoiceControl
 {
     public class AircraftGrammarBuilder
     {
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         Choices NumberChoices;
         Choices RunwayDirectionChoice;
         Choices AlphabetChoice;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
         List<string> AircraftGetStatusRuleBase = [];
         List<string> AircraftTakeoffRuleBase = [];
@@ -121,8 +124,16 @@ namespace MiniAirwaysVoiceControl
 
             GrammarBuilder RunwayElement = new GrammarBuilder();
             RunwayElement.Append("Runway");
-            RunwayElement.Append(new GrammarBuilder(NumberChoices, 1, 2));
-            RunwayElement.Append(new GrammarBuilder(RunwayDirectionChoice, 0, 1));
+            if (gs.RunwayNames.Length == 0)
+            {
+                RunwayElement.Append(new GrammarBuilder(NumberChoices, 1, 2));
+                RunwayElement.Append(new GrammarBuilder(RunwayDirectionChoice, 0, 1));
+            }
+            else
+            {
+                RunwayElement.Append(new GrammarBuilder(new Choices(ParseUtil.RunwayNameToSpell(gs.RunwayNames))));
+            }
+
 
             // No Command, Show flying path
             for (int i = 0; i < AircraftGetStatusRuleBase.Count; i++)
@@ -375,6 +386,19 @@ namespace MiniAirwaysVoiceControl
         { "nine", "9" }
     };
 
+        private static readonly Dictionary<string, string> NumberToWord = new Dictionary<string, string>
+    {
+        { "0", "zero" }, { "1", "one" },  { "2", "two" },
+        { "3", "three" }, { "4", "four" }, { "5", "five" },
+        { "6", "six" }, { "7", "seven" }, { "8", "eight" },
+        { "9", "nine" }
+    };
+
+        private static readonly Dictionary<string, string> LCRToWord = new Dictionary<string, string>
+    {
+        { "L", "left" }, { "C", "center" },  { "R", "right" }
+    };
+
 
         public static List<string> TransformSubstrings(List<string> A, List<string> B, List<string> C, List<string> D, string S, int min, int max)
         {
@@ -457,11 +481,36 @@ namespace MiniAirwaysVoiceControl
                         }
                     }
 
-                    results.Add(result);
+                    results.Add(result.Trim());
                 }
             }
-
             return results;
+        }
+
+        public static string[] RunwayNameToSpell(string[] names)
+        {
+            List<string> ret = new();
+            foreach (string name in names)
+            {
+                StringBuilder sb = new();
+                foreach (char ch in name)
+                {
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+                    if (NumberToWord.TryGetValue(ch.ToString(), out string sp))
+                    {
+                        sb.Append(sp);
+                    }
+                    else if (LCRToWord.TryGetValue(ch.ToString(), out string sd))
+                    {
+                        sb.Append(sd);
+                    }
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+
+                    sb.Append(" ");
+                }
+                ret.Add(sb.ToString().Trim());
+            }
+            return ret.ToArray();
         }
     }
 }

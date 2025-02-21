@@ -25,9 +25,10 @@ namespace MiniAirwaysVoiceControl
 
             testGrammarSource = new GrammarSource() 
             {
-                Airlines = new string[] { "United", "Delta" },
-                AirlineCodes = new string[] { "United", "Delta" },
-                NamedWaypoints = new string[] { "Alpha", "Bravo", "Charlie", "Delta" }
+                Airlines = new string[] { "America", "Delta" },
+                AirlineCodes = new string[] { "AAL", "DLT" },
+                NamedWaypoints = new string[] { "Alpha", "Bravo", "Charlie", "Delta" },
+                RunwayNames = new string[] {"09", "27"}
             };
 
             Init();

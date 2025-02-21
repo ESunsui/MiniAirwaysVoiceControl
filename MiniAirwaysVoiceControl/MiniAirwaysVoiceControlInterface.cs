@@ -5,6 +5,7 @@ namespace MiniAirwaysVoiceControl
 {
     public class MiniAirwaysVoiceControlInterface
     {
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         public interface IMiniAirwaysSrSeralizeable
         {
             public Message Seralize()
@@ -28,9 +29,11 @@ namespace MiniAirwaysVoiceControl
 
         public class GrammarSource : IMiniAirwaysSrSeralizeable
         {
+
             public string[] Airlines { get; set; }
             public string[] AirlineCodes { get; set; }
             public string[] NamedWaypoints { get; set; }
+            public string[] RunwayNames { get; set; }
         }
 
         public class GrammarStruct : IMiniAirwaysSrSeralizeable
@@ -64,7 +67,7 @@ namespace MiniAirwaysVoiceControl
         }
 
         public class SRResult : IMiniAirwaysSrSeralizeable
-        { 
+        {
             public ResultType Type { get; set; }
             public GrammarType Grammar { get; set; }
             public string Message { get; set; }
@@ -73,5 +76,6 @@ namespace MiniAirwaysVoiceControl
             public string Heading { get; set; }
             public string Runway { get; set; }
         }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     }
 }
