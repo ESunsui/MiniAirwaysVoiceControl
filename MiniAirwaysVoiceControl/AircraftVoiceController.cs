@@ -16,14 +16,14 @@ namespace MiniAirwaysVoiceControl
         public event EventHandler<GrammarSource> OnGrammarSourceChanged;
         public event EventHandler<GrammarStruct> OnGrammarStructChanged;
         public event EventHandler<bool> OnConnectToInputDevice;
-        NamedPipeClient namedPipeClient;
+        TCPClient tcpClient;
         Queue<Message> messages = new();
         CancellationTokenSource cts;
 
 
-        public void Attach(NamedPipeClient namedPipeClient)
+        public void Attach(TCPClient namedPipeClient)
         {
-            this.namedPipeClient = namedPipeClient;
+            this.tcpClient = namedPipeClient;
             namedPipeClient.OnMessageReceived += OnMessageReceived;
             if (cts != null)
             {
@@ -36,8 +36,8 @@ namespace MiniAirwaysVoiceControl
 
         public void Detach()
         {
-            this.namedPipeClient.OnMessageReceived -= OnMessageReceived;
-            this.namedPipeClient = null;
+            this.tcpClient.OnMessageReceived -= OnMessageReceived;
+            this.tcpClient = null;
             cts.Cancel();
             cts.Dispose();
             cts = null;
@@ -96,9 +96,9 @@ namespace MiniAirwaysVoiceControl
             {
                 while (!ct.IsCancellationRequested)
                 {
-                    if (namedPipeClient.IsConnected && messages.TryDequeue(out Message result))
+                    if (tcpClient.IsConnected && messages.TryDequeue(out Message result))
                     {
-                        await namedPipeClient.Send(JsonConvert.SerializeObject(result));
+                        await tcpClient.Send(JsonConvert.SerializeObject(result));
                     }
                     else
                     {

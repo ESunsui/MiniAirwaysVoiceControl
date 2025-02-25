@@ -26,6 +26,8 @@ namespace MiniAirwaysVoiceControl
         List<string> AirlineCodes = [];
         List<string> AirlineCallsigns = [];
         List<string> NamedWaypoints = [];
+        List<string> Runways = [];
+        List<string> RunwaySpells = [];
 
         const string AircraftElement = "{AIRCRAFT}";
         const string NamedWaypointElement = "{WAYPOINT_D}";
@@ -123,15 +125,19 @@ namespace MiniAirwaysVoiceControl
             HeadingElement.Append(NumberChoices);
 
             GrammarBuilder RunwayElement = new GrammarBuilder();
-            RunwayElement.Append("Runway");
+            
             if (gs.RunwayNames.Length == 0)
             {
+                RunwayElement.Append("Runway");
                 RunwayElement.Append(new GrammarBuilder(NumberChoices, 1, 2));
                 RunwayElement.Append(new GrammarBuilder(RunwayDirectionChoice, 0, 1));
             }
             else
             {
-                RunwayElement.Append(new GrammarBuilder(new Choices(ParseUtil.RunwayNameToSpell(gs.RunwayNames))));
+                Runways = gs.RunwayNames.ToList();
+                string[] rwys = ParseUtil.RunwayNameToSpell(gs.RunwayNames);
+                RunwaySpells = rwys.ToList();
+                RunwayElement.Append(new GrammarBuilder(new Choices(rwys)));
             }
 
 
@@ -193,7 +199,14 @@ namespace MiniAirwaysVoiceControl
 
         string MatchRunwayPattern(string s)
         {
-            return ParseUtil.TransformSubstrings(["runway"], [""], ["left", "center", "right"], ["L", "C", "R"], s, 1, 2).FirstOrDefault(string.Empty);
+            for (int i=0; i<Runways.Count; i++)
+            {
+                if (s.ToLower().Contains(RunwaySpells[i].ToLower()))
+                {
+                    return Runways[i];
+                }
+            }
+            return string.Empty;
         }
 
         string MatchHeadingPattern(string s)
@@ -205,7 +218,7 @@ namespace MiniAirwaysVoiceControl
         {
             foreach (var waypoint in this.NamedWaypoints)
             {
-                if (s.Contains(waypoint))
+                if (s.ToLower().Contains(waypoint.ToLower()))
                 {
                     return waypoint;
                 }
@@ -404,48 +417,60 @@ namespace MiniAirwaysVoiceControl
         {
             List<string> results = new List<string>();
 
-            // List of all numeric words
-            string numberWordPattern = string.Join("|", wordToNumber.Keys);
-            // Regex pattern to match a sequence of number words repeating between min and max times
+            // 所有数字单词的模式
+            string numberWordPattern = string.Join("|", wordToNumber.Keys.Select(Regex.Escape));
+            // 匹配连续的数字单词，出现次数在 min 和 max 之间
             string numberPattern = $@"((?:(?:{numberWordPattern})\s?){{{min},{max}}})";
 
             if (A.Count > 0 && B.Count > 0 && A.Count == B.Count)
             {
+                // 构建 A 列表中单词的正则模式
                 string wordPattern = string.Join("|", A.Select(Regex.Escape));
-                // Combine patterns: matching words from A followed directly by numbers
+                // 综合模式：匹配 A 列表中的单词，后接数字单词序列，可能后接一个后缀词
                 string pattern = $@"\b({wordPattern})\b\s?{numberPattern}";
                 if (C.Count > 0 && D.Count > 0 && C.Count == D.Count)
                 {
                     pattern += @"\s?(\b(?:\w+)\b)";
                 }
+
                 Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
 
                 foreach (Match match in regex.Matches(S))
                 {
                     string substring = match.Value;
 
+                    // 替换 A 中的单词为 B 中对应的单词
                     for (int i = 0; i < A.Count; i++)
                     {
                         string aWord = A[i];
                         string bWord = B[i];
-
-                        // Case-insensitive replacement
                         substring = Regex.Replace(substring, @"\b" + Regex.Escape(aWord) + @"\b", bWord, RegexOptions.IgnoreCase);
                     }
 
+                    // 替换数字单词为对应的数字
                     substring = Regex.Replace(substring, numberPattern, m =>
                     {
                         var numberWords = m.Groups[1].Value.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                         return string.Join("", numberWords.Select(w => wordToNumber[w.ToLower()]));
                     });
 
+                    // 处理后缀词
                     if (C.Count > 0 && D.Count > 0 && C.Count == D.Count)
                     {
                         string followingWord = match.Groups[3].Value;
-                        if (C.Contains(followingWord))
+                        if (C.Contains(followingWord, StringComparer.OrdinalIgnoreCase))
                         {
-                            int index = C.IndexOf(followingWord);
-                            substring = substring.Replace(followingWord, D[index]);
+                            int index = C.FindIndex(c => string.Equals(c, followingWord, StringComparison.OrdinalIgnoreCase));
+                            if (index != -1)
+                            {
+                                // 替换为 D 中对应的单词
+                                substring = Regex.Replace(substring, @"\b" + Regex.Escape(followingWord) + @"\b", D[index], RegexOptions.IgnoreCase);
+                            }
+                        }
+                        else
+                        {
+                            // 如果后缀词不在 C 中，则移除它
+                            substring = Regex.Replace(substring, @"\b" + Regex.Escape(followingWord) + @"\b", "", RegexOptions.IgnoreCase).Trim();
                         }
                     }
 
@@ -454,7 +479,7 @@ namespace MiniAirwaysVoiceControl
             }
             else
             {
-                // Only match the number sequences when A and B are empty
+                // 当 A 和 B 为空时，只匹配数字序列，可能后接一个后缀词
                 string pattern = numberPattern;
                 if (C.Count > 0 && D.Count > 0 && C.Count == D.Count)
                 {
@@ -464,6 +489,7 @@ namespace MiniAirwaysVoiceControl
 
                 foreach (Match match in regex.Matches(S))
                 {
+                    // 将数字单词转换为数字，并移除空格
                     string numbersWithoutSpaces = Regex.Replace(match.Groups[1].Value, $@"(?:{numberWordPattern})", m =>
                     {
                         return wordToNumber[m.Value.ToLower()];
@@ -474,10 +500,15 @@ namespace MiniAirwaysVoiceControl
                     if (C.Count > 0 && D.Count > 0 && C.Count == D.Count)
                     {
                         string followingWord = match.Groups[2].Value;
-                        if (C.Contains(followingWord))
+                        if (C.Contains(followingWord, StringComparer.OrdinalIgnoreCase))
                         {
-                            int index = C.IndexOf(followingWord);
-                            result += " " + D[index];
+                            int index = C.FindIndex(c => string.Equals(c, followingWord, StringComparison.OrdinalIgnoreCase));
+                            if (index != -1)
+                            {
+                                // 在结果中添加替换后的后缀词
+                                result += " " + D[index];
+                            }
+                            // 如果后缀词不在 C 中，则不添加任何内容（即移除它）
                         }
                     }
 
@@ -493,6 +524,7 @@ namespace MiniAirwaysVoiceControl
             foreach (string name in names)
             {
                 StringBuilder sb = new();
+                sb.Append("Runway ");
                 foreach (char ch in name)
                 {
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.

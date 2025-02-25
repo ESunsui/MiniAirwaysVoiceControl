@@ -11,7 +11,7 @@ namespace MiniAirwaysVoiceControl
     {
         static GrammaVoiceRecog VoiceRecog;
         static AircraftGrammarBuilder GrammarBuilder;
-        static NamedPipeClient PipeClient;
+        static TCPClient TCPClient;
         static AircraftVoiceController VoiceControl;
 
         static GrammarSource testGrammarSource;
@@ -20,7 +20,7 @@ namespace MiniAirwaysVoiceControl
         {
             VoiceRecog = new GrammaVoiceRecog();
             GrammarBuilder = new AircraftGrammarBuilder();
-            PipeClient = new NamedPipeClient();
+            TCPClient = new TCPClient();
             VoiceControl = new AircraftVoiceController();
 
             testGrammarSource = new GrammarSource() 
@@ -31,7 +31,17 @@ namespace MiniAirwaysVoiceControl
                 RunwayNames = new string[] {"09", "27"}
             };
 
-            Init();
+            string rnd = "";
+            for (int i=0; i<args.Length-1; i++)
+            {
+                if (args[i] == "--portRnd")
+                {
+                    rnd = args[i+1];
+                    break;
+                }
+            }
+
+            Init(rnd);
 
             // Keep the console window open.  
             while (true)
@@ -46,11 +56,11 @@ namespace MiniAirwaysVoiceControl
 
         
 
-        static async Task Init()
+        static async Task Init(string portRnd = "")
         {
             GrammarBuilder.Init();
-            await PipeClient.Connect();
-            VoiceControl.Attach(PipeClient);
+            await TCPClient.Connect(portRnd);
+            VoiceControl.Attach(TCPClient);
 
             #region Voice Controller Handlers
 
