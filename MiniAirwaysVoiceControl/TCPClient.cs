@@ -9,7 +9,7 @@ namespace SpeechRecognitionApp
 {
     public class TCPClient
     {
-        private const int BasePort = 9000;
+        private const int BasePort = 28965;
 
         private TcpClient tcpClient;
         private NetworkStream networkStream;
