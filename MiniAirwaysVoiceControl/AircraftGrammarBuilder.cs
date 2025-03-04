@@ -10,10 +10,17 @@ namespace MiniAirwaysVoiceControl
 {
     public class AircraftGrammarBuilder
     {
+        public static string CN_Numbers = "洞腰两三四五六拐八鸠";
+        public static string[] AlphabetSpells = { "a-fa", "al-fuh", "how-tel", "li-ma", "tang-gow" };
+        public static string[] AlphabetNames = { "A", "A", "H", "L", "T" };
+        
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         Choices NumberChoices;
         Choices RunwayDirectionChoice;
         Choices AlphabetChoice;
+        
+        Choices NumberChoicesCN;
+        Choices RunwayDirectionChoiceCN;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
         List<string> AircraftGetStatusRuleBase = [];
@@ -43,8 +50,17 @@ namespace MiniAirwaysVoiceControl
             RunwayDirectionChoice = new Choices(new string[] {
                 "left", "right", "center"
             });
-            AlphabetChoice = new Choices(new string[] {
-                "al-fuh", "how-tel", "li-ma", "tang-gow"
+            AlphabetChoice = new Choices(AlphabetSpells);
+
+            // convert CN Number string to a list of string character
+            string[] CNSplit = new string[CN_Numbers.Length];
+            for (int i=0; i<CN_Numbers.Length; i++)
+            {
+                CNSplit[i] = CN_Numbers[i].ToString();
+            }
+            NumberChoicesCN = new Choices(CNSplit);
+            RunwayDirectionChoiceCN = new Choices(new string[] {
+                "左", "右", "中"
             });
         }
 
@@ -94,7 +110,7 @@ namespace MiniAirwaysVoiceControl
             }
         }
 
-        public Grammar[] CreateGrammar(GrammarSource gs)
+        public Grammar[] CreateGrammar(GrammarSource gs, string lang)
         {
             AirlineCallsigns = [.. gs.Airlines];
             AirlineCodes = [.. gs.AirlineCodes];
@@ -107,22 +123,24 @@ namespace MiniAirwaysVoiceControl
 
             GrammarBuilder AircraftElement = new GrammarBuilder();
             AircraftElement.Append(new GrammarBuilder(AirlineChoice));
-            AircraftElement.Append(new GrammarBuilder(NumberChoices));
-            AircraftElement.Append(new GrammarBuilder(NumberChoices));
-            AircraftElement.Append(new GrammarBuilder(NumberChoices));
+            
+            Choices _numberChoices = lang == "zh-CN" ? NumberChoicesCN : NumberChoices;
+            AircraftElement.Append(new GrammarBuilder(_numberChoices));
+            AircraftElement.Append(new GrammarBuilder(_numberChoices));
+            AircraftElement.Append(new GrammarBuilder(_numberChoices));
 
             GrammarBuilder NamedWaypointElement = new GrammarBuilder();
             NamedWaypointElement.Append(new GrammarBuilder(NamedWaypointChoice));
 
             GrammarBuilder NormalWaypointElement = new GrammarBuilder();
             NormalWaypointElement.Append(new GrammarBuilder(AlphabetChoice));
-            NormalWaypointElement.Append(new GrammarBuilder(NumberChoices));
-            NormalWaypointElement.Append(new GrammarBuilder(NumberChoices));
+            NormalWaypointElement.Append(new GrammarBuilder(_numberChoices));
+            NormalWaypointElement.Append(new GrammarBuilder(_numberChoices));
 
             GrammarBuilder HeadingElement = new GrammarBuilder();
-            HeadingElement.Append(NumberChoices);
-            HeadingElement.Append(NumberChoices);
-            HeadingElement.Append(NumberChoices);
+            HeadingElement.Append(_numberChoices);
+            HeadingElement.Append(_numberChoices);
+            HeadingElement.Append(_numberChoices);
 
             GrammarBuilder RunwayElement = new GrammarBuilder();
             
@@ -135,7 +153,7 @@ namespace MiniAirwaysVoiceControl
             else
             {
                 Runways = gs.RunwayNames.ToList();
-                string[] rwys = ParseUtil.RunwayNameToSpell(gs.RunwayNames);
+                string[] rwys = ParseUtil.RunwayNameToSpell(gs.RunwayNames, lang);
                 RunwaySpells = rwys.ToList();
                 RunwayElement.Append(new GrammarBuilder(new Choices(rwys)));
             }
@@ -144,7 +162,7 @@ namespace MiniAirwaysVoiceControl
             // No Command, Show flying path
             for (int i = 0; i < AircraftGetStatusRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftGetStatusRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftGetStatusRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo(lang));
                 grammar.Name = "AGS" + i.ToString();
                 grammars.Add(grammar);
             }
@@ -152,7 +170,7 @@ namespace MiniAirwaysVoiceControl
             // Aircraft Takeoff
             for (int i = 0; i < AircraftTakeoffRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftTakeoffRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftTakeoffRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo(lang));
                 grammar.Name = "ATO" + i.ToString();
                 grammars.Add(grammar);
             }
@@ -160,7 +178,7 @@ namespace MiniAirwaysVoiceControl
             // Aircraft Land
             for (int i = 0; i < AircraftLandingRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftLandingRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftLandingRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo(lang));
                 grammar.Name = "ALD" + i.ToString();
                 grammars.Add(grammar);
             }
@@ -168,7 +186,7 @@ namespace MiniAirwaysVoiceControl
             // Aircraft Vector to Destination Waypoint
             for (int i = 0; i < AircraftVectorToDestinationWaypointRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftVectorToDestinationWaypointRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftVectorToDestinationWaypointRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo(lang));
                 grammar.Name = "AVD" + i.ToString();
                 grammars.Add(grammar);
             }
@@ -176,7 +194,7 @@ namespace MiniAirwaysVoiceControl
             // Aircraft Vector to Normal Waypoint
             for (int i = 0; i < AircraftVectorToNormalWaypointRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftVectorToNormalWaypointRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftVectorToNormalWaypointRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo(lang));
                 grammar.Name = "AVW" + i.ToString();
                 grammars.Add(grammar);
             }
@@ -184,7 +202,7 @@ namespace MiniAirwaysVoiceControl
             // Aircraft FlyHeading
             for (int i = 0; i < AircraftFlyHeadingRuleBase.Count; i++)
             {
-                Grammar grammar = CSRParser.ParseCSR(AircraftFlyHeadingRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo("en-US"));
+                Grammar grammar = CSRParser.ParseCSR(AircraftFlyHeadingRuleBase[i], AircraftElement, RunwayElement, HeadingElement, NamedWaypointElement, NormalWaypointElement, new CultureInfo(lang));
                 grammar.Name = "AFH" + i.ToString();
                 grammars.Add(grammar);
             }
@@ -195,6 +213,57 @@ namespace MiniAirwaysVoiceControl
         string MatchAircraftPattern(string s)
         {
             return ParseUtil.TransformSubstrings(AirlineCallsigns, AirlineCodes, [], [], s, 3, 4).FirstOrDefault(string.Empty);
+        }
+
+        string MatchAircraftPatternCN(string s)
+        {
+            // 航司总是出现在句子的开头，因此先匹配是哪个航司
+            int AirlineIndex = -1;
+            foreach (string airline in AirlineCallsigns)
+            {
+                if (s.StartsWith(airline))
+                {
+                    AirlineIndex = AirlineCallsigns.IndexOf(airline);
+                    break;
+                }
+            }
+            if (AirlineIndex == -1)
+            {
+                return string.Empty;
+            }
+            string AirlineCode = AirlineCodes[AirlineIndex];
+            
+            // 匹配数字序列
+            // // 删掉航司
+            string ss = s.Substring(AirlineCallsigns[AirlineIndex].Length).Trim();
+            // // 一个一个进行字符进行汉字转阿拉伯数字，直到不是数字
+            string number = "";
+            bool numberMatched = false;
+            string WordToNumber = CN_Numbers;
+            for (int i=0; i<ss.Length; i++)
+            {
+                if (WordToNumber.Contains(ss[i].ToString()))
+                {
+                    number += WordToNumber.IndexOf(ss[i].ToString(), StringComparison.Ordinal);
+                }
+                else
+                {
+                    numberMatched = true;
+                    break;
+                }
+                // 最多不超过四位数
+                if (number.Length == 4)
+                {
+                    break;
+                }
+            }
+            if (!numberMatched)
+            {
+                return string.Empty;
+            }
+            
+            
+            return AirlineCode + ' ' + number;
         }
 
         string MatchRunwayPattern(string s)
@@ -209,11 +278,64 @@ namespace MiniAirwaysVoiceControl
             return string.Empty;
         }
 
+        string MatchRunwayPatternCN(string s)
+        {
+            for (int i=0; i<Runways.Count; i++)
+            {
+                string ss = RunwaySpells[i];
+                ss = ss.Replace(" ", "");
+                if (s.ToLower().Contains(ss))
+                {
+                    return Runways[i];
+                }
+            }
+            return string.Empty;
+        }
+
         string MatchHeadingPattern(string s)
         {
             return ParseUtil.TransformSubstrings([], [], [], [], s, 3, 3).LastOrDefault(string.Empty);
         }
 
+        string MatchHeadingPatternCN(string s)
+        {
+            // 首先找到“航向”两个字
+            int headingIndex = s.IndexOf("航向", StringComparison.Ordinal);
+            if (headingIndex == -1)
+            {
+                return string.Empty;
+            }
+
+            string number = "";
+            string WordToNumber = CN_Numbers;
+            // 找到“航向”后面的数字序列，一共三位
+            try
+            {
+                for (int i=headingIndex+2; i<s.Length; i++)
+                {
+                    if (WordToNumber.Contains(s[i].ToString()))
+                    {
+                        number += WordToNumber.IndexOf(s[i].ToString(), StringComparison.Ordinal);
+                    }
+                    else
+                    {
+                        // 后接的都不是数字，哪里出错了
+                        return string.Empty;
+                    }
+                    if (number.Length == 3)
+                    {
+                        return number;
+                    }
+                }
+            } catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return string.Empty;
+            }
+
+            return string.Empty;
+        }
+        
         string MatchNamedWaypointPattern(string s)
         {
             foreach (var waypoint in this.NamedWaypoints)
@@ -228,10 +350,75 @@ namespace MiniAirwaysVoiceControl
 
         string MatchNormalWaypointPattern(string s)
         {
-            return ParseUtil.TransformSubstrings(["al-fuh", "how-tel", "li-ma", "tang-gow"], ["A", "H", "L", "T"], [], [], s, 2, 2).FirstOrDefault(string.Empty);
+            return ParseUtil.TransformSubstrings(new List<string>(AlphabetSpells), new List<string>(AlphabetNames), [], [], s, 2, 2).FirstOrDefault(string.Empty);
         }
 
-        public SRResult ExtractGrammar(ResultType rt, string grammarName, string s)
+        string MatchNormalWaypointPatternCN(string s)
+        {
+            // 首先找到“飞航点”
+            int waypointIndex = s.IndexOf("飞航点", StringComparison.Ordinal);
+            if (waypointIndex == -1)
+            {
+                return string.Empty;
+            }
+            string ss = s.Substring(waypointIndex + 3).Trim().ToLower();
+            
+            // 接下来要匹配到"al-fuh", "how-tel", "li-ma", "tang-gow"其中一个
+            // 匹配不到直接失败
+            string waypoint = "";
+            string waypointSpell = "";
+            bool matched1 = false;
+            string[] waypointSpells = AlphabetSpells;
+            string[] waypointNames = AlphabetNames;
+            foreach (string spell in waypointSpells)
+            {
+                if (ss.StartsWith(spell))
+                {
+                    waypoint = waypointNames[Array.IndexOf(waypointSpells, spell)];
+                    waypointSpell = spell;
+                    matched1 = true;
+                    break;
+                }
+            }
+            if (!matched1)
+            {
+                return string.Empty;
+            }
+            
+            // 匹配数字序列, 两位
+            string sss = ss.Substring(waypointSpell.Length).Trim();
+            string number = "";
+            string WordToNumber = CN_Numbers;
+            try
+            {
+                for (int i=0; i<2; i++)
+                {
+                    if (WordToNumber.Contains(sss[i].ToString()))
+                    {
+                        number += WordToNumber.IndexOf(sss[i].ToString(), StringComparison.Ordinal);
+                    }
+                    else
+                    {
+                        // 后接的都不是数字，哪里出错了
+                        return string.Empty;
+                    }
+                    
+                    if (number.Length == 2)
+                    {
+                        return waypoint + " " + number;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return string.Empty;
+            }
+            
+            return string.Empty;
+        }
+
+        public SRResult ExtractGrammar(ResultType rt, string grammarName, string s, string lang)
         {
             GrammarType gt = GrammarType.Invalid;
             if (rt == ResultType.Rejected || string.IsNullOrEmpty(s))
@@ -272,15 +459,36 @@ namespace MiniAirwaysVoiceControl
                     break;
             }
 
-            string aircraft = MatchAircraftPattern(s);
-            string runway = MatchRunwayPattern(s);
-            string heading = MatchHeadingPattern(s);
-            string waypoint = "";
-            if (gt == GrammarType.AircraftVectorToDestinationWaypoint)
-                waypoint = MatchNamedWaypointPattern(s);
-            else if (gt == GrammarType.AircraftVectorToNormalWaypoint)
-                waypoint = MatchNormalWaypointPattern(s);
+            string aircraft, runway, heading, waypoint;
 
+            if (lang == "en-US")
+            {
+                aircraft = MatchAircraftPattern(s);
+                runway = MatchRunwayPattern(s);
+                heading = MatchHeadingPattern(s);
+                waypoint = "";
+                if (gt == GrammarType.AircraftVectorToDestinationWaypoint)
+                    waypoint = MatchNamedWaypointPattern(s);
+                else if (gt == GrammarType.AircraftVectorToNormalWaypoint)
+                    waypoint = MatchNormalWaypointPattern(s);
+            } else if (lang == "zh-CN")
+            {
+                aircraft = MatchAircraftPatternCN(s);
+                runway = MatchRunwayPatternCN(s);
+                heading = MatchHeadingPatternCN(s);
+                waypoint = "";
+                if (gt == GrammarType.AircraftVectorToDestinationWaypoint)
+                    waypoint = MatchNamedWaypointPattern(s);
+                else if (gt == GrammarType.AircraftVectorToNormalWaypoint)
+                    waypoint = MatchNormalWaypointPatternCN(s);
+            }
+            else
+            {
+                throw new ArgumentException("Unsupported language");
+            }
+            
+            Console.WriteLine($"Grammar: {gt}, Aircraft: {aircraft}, Waypoint: {waypoint}, Heading: {heading}, Runway: {runway}");
+            
             return new SRResult()
             {
                 Type = rt,
@@ -292,8 +500,6 @@ namespace MiniAirwaysVoiceControl
                 Runway = runway
             };
         }
-
-
     }
 
     public class CSRParser
@@ -391,7 +597,7 @@ namespace MiniAirwaysVoiceControl
 
     public class ParseUtil
     {
-        private static readonly Dictionary<string, string> wordToNumber = new Dictionary<string, string>
+        public static readonly Dictionary<string, string> wordToNumber = new Dictionary<string, string>
     {
         { "zero", "0" }, { "one", "1" }, { "two", "2" },
         { "three", "3" }, { "four", "4" }, { "five", "5" },
@@ -399,7 +605,7 @@ namespace MiniAirwaysVoiceControl
         { "nine", "9" }
     };
 
-        private static readonly Dictionary<string, string> NumberToWord = new Dictionary<string, string>
+        public static readonly Dictionary<string, string> NumberToWord = new Dictionary<string, string>
     {
         { "0", "zero" }, { "1", "one" },  { "2", "two" },
         { "3", "three" }, { "4", "four" }, { "5", "five" },
@@ -407,10 +613,31 @@ namespace MiniAirwaysVoiceControl
         { "9", "nine" }
     };
 
-        private static readonly Dictionary<string, string> LCRToWord = new Dictionary<string, string>
+        public static readonly Dictionary<string, string> NumberToWordCN = new Dictionary<string, string>
+        {
+            { "0", "洞" }, { "1", "腰" },  { "2", "两" },
+            { "3", "三" }, { "4", "四" }, { "5", "五" },
+            { "6", "六" }, { "7", "拐" }, { "8", "八" },
+            { "9", "鸠" }
+        };
+        
+        public static readonly Dictionary<string, string>
+            WordToNumberCN = new Dictionary<string, string>
+            {
+                { "腰", "1" }, { "两", "2" }, { "三", "3" },
+                { "四", "4" }, { "五", "5" }, { "六", "6" },
+                { "拐", "7" }, { "八", "8" }, { "鸠", "9" }
+            };
+
+        public static readonly Dictionary<string, string> LCRToWord = new Dictionary<string, string>
     {
         { "L", "left" }, { "C", "center" },  { "R", "right" }
     };
+
+        public static readonly Dictionary<string, string> LCRToWordCN = new Dictionary<string, string>
+        {
+            { "L", "左" }, { "C", "中" }, { "R", "右" }
+        };
 
 
         public static List<string> TransformSubstrings(List<string> A, List<string> B, List<string> C, List<string> D, string S, int min, int max)
@@ -518,23 +745,40 @@ namespace MiniAirwaysVoiceControl
             return results;
         }
 
-        public static string[] RunwayNameToSpell(string[] names)
+        public static string[] RunwayNameToSpell(string[] names, string lang)
         {
             List<string> ret = new();
             foreach (string name in names)
             {
                 StringBuilder sb = new();
-                sb.Append("Runway ");
+                sb.Append(lang == "en-US" ? "Runway " : "跑道");
                 foreach (char ch in name)
                 {
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
-                    if (NumberToWord.TryGetValue(ch.ToString(), out string sp))
+                    if (lang == "en-US")
                     {
-                        sb.Append(sp);
+                        if (NumberToWord.TryGetValue(ch.ToString(), out string sp))
+                        {
+                            sb.Append(sp);
+                        }
+                        else if (LCRToWord.TryGetValue(ch.ToString(), out string sd))
+                        {
+                            sb.Append(sd);
+                        }
+                    } else if (lang == "zh-CN")
+                    {
+                        if (NumberToWordCN.TryGetValue(ch.ToString(), out string sp))
+                        {
+                            sb.Append(sp);
+                        }
+                        else if (LCRToWordCN.TryGetValue(ch.ToString(), out string sd))
+                        {
+                            sb.Append(sd);
+                        }
                     }
-                    else if (LCRToWord.TryGetValue(ch.ToString(), out string sd))
+                    else
                     {
-                        sb.Append(sd);
+                        throw new ArgumentException("Unsupported language");
                     }
 #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
 

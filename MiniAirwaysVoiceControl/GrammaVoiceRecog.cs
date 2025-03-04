@@ -44,8 +44,8 @@ namespace MiniAirwaysVoiceControl
         {
             try
             {
+                Console.WriteLine("Initializing speech recognition engine for language: " + language);
                 recognizer = new SpeechRecognitionEngine(new CultureInfo(language));
-
                 OnSRInited?.Invoke(this, language);
             }
             catch (System.ArgumentException e)
@@ -63,6 +63,9 @@ namespace MiniAirwaysVoiceControl
                     return;
                 }
             }
+            
+            recognizer.EndSilenceTimeoutAmbiguous = TimeSpan.FromSeconds(3);
+            recognizer.EndSilenceTimeout = TimeSpan.FromSeconds(3);
             
             // Add a handler for the speech recognized event.  
             recognizer.SpeechDetected +=

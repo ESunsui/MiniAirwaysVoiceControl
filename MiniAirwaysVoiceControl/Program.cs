@@ -16,6 +16,8 @@ namespace MiniAirwaysVoiceControl
 
         static GrammarSource testGrammarSource;
 
+        private static string Lang;
+        
         static void Main(string[] args)
         {
             VoiceRecog = new GrammaVoiceRecog();
@@ -71,7 +73,8 @@ namespace MiniAirwaysVoiceControl
 
             VoiceControl.OnVoiceEngineLanguageChanged += (object? _, string Language) => 
             { 
-                VoiceRecog.Init(Language); 
+                VoiceRecog.Init(Language);
+                Lang = Language;
             };
 
             VoiceControl.OnGrammarStructChanged += (object? _, GrammarStruct Grammar) => 
@@ -79,7 +82,7 @@ namespace MiniAirwaysVoiceControl
                 GrammarBuilder.SetRules(Grammar);
                 try
                 {
-                    var grammars = GrammarBuilder.CreateGrammar(testGrammarSource);
+                    var grammars = GrammarBuilder.CreateGrammar(testGrammarSource, Lang);
                     VoiceRecog.SetGrammar(grammars);
                     VoiceControl.Send(new GrammarInitResult()
                     {
@@ -108,7 +111,7 @@ namespace MiniAirwaysVoiceControl
             {
                 try
                 {
-                    var grammars = GrammarBuilder.CreateGrammar(grammarSource);
+                    var grammars = GrammarBuilder.CreateGrammar(grammarSource, Lang);
                     VoiceRecog.SetGrammar(grammars);
                     VoiceControl.Send(new GrammarInitResult()
                     {
@@ -192,21 +195,21 @@ namespace MiniAirwaysVoiceControl
             VoiceRecog.OnSpeechHypothesized += (object? _, string Hypothesis) =>
             {
                 VoiceControl.Send(
-                    GrammarBuilder.ExtractGrammar(ResultType.Hypothesized, "N/A", Hypothesis)
+                    GrammarBuilder.ExtractGrammar(ResultType.Hypothesized, "N/A", Hypothesis, Lang)
                 );
             };
 
             VoiceRecog.OnSpeechRecognized += (object? _, (string Grammar, string Result) RecogResult) =>
             {
                 VoiceControl.Send(
-                    GrammarBuilder.ExtractGrammar(ResultType.Recognized, RecogResult.Grammar, RecogResult.Result)
+                    GrammarBuilder.ExtractGrammar(ResultType.Recognized, RecogResult.Grammar, RecogResult.Result, Lang)
                 );
             };
 
             VoiceRecog.OnSpeechRejected += (object? _, (float Confidence, string Grammar, string Result) RecogResult) =>
             {
                 VoiceControl.Send(
-                    GrammarBuilder.ExtractGrammar(RecogResult.Confidence > 0.3f ? ResultType.Recognized : ResultType.Rejected, RecogResult.Grammar, RecogResult.Result)
+                    GrammarBuilder.ExtractGrammar(RecogResult.Confidence > 0.3f ? ResultType.Recognized : ResultType.Rejected, RecogResult.Grammar, RecogResult.Result, Lang)
                 );
             };
 
