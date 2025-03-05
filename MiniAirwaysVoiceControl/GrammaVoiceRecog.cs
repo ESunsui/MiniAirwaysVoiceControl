@@ -64,8 +64,8 @@ namespace MiniAirwaysVoiceControl
                 }
             }
             
-            recognizer.EndSilenceTimeoutAmbiguous = TimeSpan.FromSeconds(3);
-            recognizer.EndSilenceTimeout = TimeSpan.FromSeconds(3);
+            recognizer.EndSilenceTimeoutAmbiguous = TimeSpan.FromSeconds(1.5f);
+            recognizer.EndSilenceTimeout = TimeSpan.FromSeconds(1.5f);
             
             // Add a handler for the speech recognized event.  
             recognizer.SpeechDetected +=

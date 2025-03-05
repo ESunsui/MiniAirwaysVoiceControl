@@ -42,6 +42,46 @@ namespace MiniAirwaysVoiceControl
         const string RunwayElement = "{RUNWAY}";
         const string HeadingElement = "{HEADING}";
 
+        public string InternalStringToHumanString(string s)
+        {
+            // replace any airline pronounciation with its code
+            foreach (string airline in AirlineCallsigns)
+            {
+                if (s.StartsWith(airline))
+                {
+                    s = s.Replace(airline, AirlineCodes[AirlineCallsigns.IndexOf(airline)]);
+                    break;
+                }
+            }
+            
+            // replace any number to arabic number
+            // EN and CN both
+            string[] EN_Numbers = new string[] { "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine" };
+            string ArabicNumbers = "0123456789";
+            foreach (string number in EN_Numbers)
+            {
+                s = s.Replace(number, ArabicNumbers[EN_Numbers.ToList().IndexOf(number)].ToString());
+            }
+            foreach (char number in CN_Numbers.ToList())
+            {
+                s = s.Replace(number.ToString(), ArabicNumbers[CN_Numbers.IndexOf(number)].ToString());
+            }
+            
+            string[] EN_LCR = new string[] { "left", "center", "right" };
+            string[] CN_LCR = new string[] { "左", "中", "右" };
+            string LCR = "LCR";
+            foreach (string lcr in EN_LCR)
+            {
+                s = s.Replace(lcr, LCR[EN_LCR.ToList().IndexOf(lcr)].ToString());
+            }
+            foreach (string lcr in CN_LCR)
+            {
+                s = s.Replace(lcr, LCR[CN_LCR.ToList().IndexOf(lcr)].ToString());
+            }
+            
+            return s;
+        }
+        
         public void Init()
         {
             NumberChoices = new Choices(new string[] {
@@ -495,7 +535,7 @@ namespace MiniAirwaysVoiceControl
             {
                 Type = rt,
                 Grammar = gt,
-                Message = s,
+                Message = InternalStringToHumanString(s),
                 Aircraft = aircraft,
                 Waypoint = waypoint,
                 Heading = heading,
