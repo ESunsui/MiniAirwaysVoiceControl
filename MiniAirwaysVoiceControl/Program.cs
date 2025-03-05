@@ -192,10 +192,10 @@ namespace MiniAirwaysVoiceControl
                 });
             };
 
-            VoiceRecog.OnSpeechHypothesized += (object? _, string Hypothesis) =>
+            VoiceRecog.OnSpeechHypothesized += (object? _, (string Grammar, string Result) RecogResult) =>
             {
                 VoiceControl.Send(
-                    GrammarBuilder.ExtractGrammar(ResultType.Hypothesized, "N/A", Hypothesis, Lang)
+                    GrammarBuilder.ExtractGrammar(ResultType.Hypothesized, RecogResult.Grammar, RecogResult.Result, Lang)
                 );
             };
 

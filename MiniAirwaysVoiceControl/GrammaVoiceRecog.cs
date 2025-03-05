@@ -18,7 +18,7 @@ namespace MiniAirwaysVoiceControl
 
         public event EventHandler<bool> OnSpeechRecogRunningStateChanged;
 
-        public event EventHandler<string> OnSpeechHypothesized;
+        public event EventHandler<(string, string)> OnSpeechHypothesized;
         public event EventHandler<(float, string, string)> OnSpeechRejected;
         public event EventHandler<(string, string)> OnSpeechRecognized;
 
@@ -186,7 +186,7 @@ namespace MiniAirwaysVoiceControl
 
             Console.WriteLine("\tG: {0}, R: {1}, C: {2}",
               grammarName, resultText, resultConfidence);
-            OnSpeechHypothesized?.Invoke(this, resultText);
+            OnSpeechHypothesized?.Invoke(this, (grammarName, resultText));
         }
 
         // Handle the SpeechRecognitionRejected event.  
