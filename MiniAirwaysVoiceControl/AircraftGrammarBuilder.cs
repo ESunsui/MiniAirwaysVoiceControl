@@ -180,7 +180,14 @@ namespace MiniAirwaysVoiceControl
             GrammarBuilder HeadingElement = new GrammarBuilder();
             HeadingElement.Append(_numberChoices);
             HeadingElement.Append(_numberChoices);
-            HeadingElement.Append(_numberChoices);
+            
+            // TODO: parameterize the number of choices, don't hard code here
+            Choices _numberChoices0and5 = new Choices(new string[] { "zero", "five" });
+            if (lang == "zh-CN")
+            {
+                _numberChoices0and5 = new Choices(new string[] { "洞", "五" });
+            }
+            HeadingElement.Append(_numberChoices0and5);
 
             GrammarBuilder RunwayElement = new GrammarBuilder();
 
