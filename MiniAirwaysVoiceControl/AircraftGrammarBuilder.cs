@@ -173,8 +173,6 @@ namespace MiniAirwaysVoiceControl
 
             GrammarBuilder NormalWaypointElement = new GrammarBuilder();
             NormalWaypointElement.Append(new GrammarBuilder(AlphabetChoice));
-            NormalWaypointElement.Append(new GrammarBuilder(_numberChoices));
-            NormalWaypointElement.Append(new GrammarBuilder(_numberChoices));
 
             GrammarBuilder HeadingElement = new GrammarBuilder();
             HeadingElement.Append(_numberChoices);
