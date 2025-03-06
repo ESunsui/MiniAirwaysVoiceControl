@@ -11,8 +11,7 @@ namespace MiniAirwaysVoiceControl
     public class AircraftGrammarBuilder
     {
         public static string CN_Numbers = "洞腰两三四五六拐八鸠";
-        public static string[] AlphabetSpells = { "a-fa", "al-fuh", "how-tel", "li-ma", "tang-gow" };
-        public static string[] AlphabetNames = { "A", "A", "H", "L", "T" };
+        public static string[] AlphabetWaypointNames = { "Bravo", "Charlie", "Delta", "Echo", "Actual", "Saber", "Victor", "Whiskey" };
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         Choices NumberChoices;
@@ -90,7 +89,7 @@ namespace MiniAirwaysVoiceControl
             RunwayDirectionChoice = new Choices(new string[] {
                 "left", "right", "center"
             });
-            AlphabetChoice = new Choices(AlphabetSpells);
+            AlphabetChoice = new Choices(AlphabetWaypointNames);
 
             // convert CN Number string to a list of string character
             string[] CNSplit = new string[CN_Numbers.Length];
@@ -396,75 +395,18 @@ namespace MiniAirwaysVoiceControl
             return string.Empty;
         }
 
-        string MatchNormalWaypointPatternEN(string s)
+        string MatchNormalWaypointPattern(string s)
         {
-            return ParseUtil.TransformSubstrings(new List<string>(AlphabetSpells), new List<string>(AlphabetNames), [], [], s, 2, 2).FirstOrDefault(string.Empty);
-        }
-
-        string MatchNormalWaypointPatternCN(string s)
-        {
-            // 首先找到“飞航点”
-            int waypointIndex = s.IndexOf("飞航点", StringComparison.Ordinal);
-            if (waypointIndex == -1)
+            foreach (var waypoint in AlphabetWaypointNames)
             {
-                return string.Empty;
-            }
-            string ss = s.Substring(waypointIndex + 3).Trim().ToLower();
-
-            // 接下来要匹配到"al-fuh", "how-tel", "li-ma", "tang-gow"其中一个
-            // 匹配不到直接失败
-            string waypoint = "";
-            string waypointSpell = "";
-            bool matched1 = false;
-            string[] waypointSpells = AlphabetSpells;
-            string[] waypointNames = AlphabetNames;
-            foreach (string spell in waypointSpells)
-            {
-                if (ss.StartsWith(spell))
+                if (s.ToLower().Contains(waypoint.ToLower()))
                 {
-                    waypoint = waypointNames[Array.IndexOf(waypointSpells, spell)];
-                    waypointSpell = spell;
-                    matched1 = true;
-                    break;
+                    return waypoint;
                 }
             }
-            if (!matched1)
-            {
-                return string.Empty;
-            }
-
-            // 匹配数字序列, 两位
-            string sss = ss.Substring(waypointSpell.Length).Trim();
-            string number = "";
-            string WordToNumber = CN_Numbers;
-            try
-            {
-                for (int i = 0; i < 2; i++)
-                {
-                    if (WordToNumber.Contains(sss[i].ToString()))
-                    {
-                        number += WordToNumber.IndexOf(sss[i].ToString(), StringComparison.Ordinal);
-                    }
-                    else
-                    {
-                        // 后接的都不是数字，哪里出错了
-                        return string.Empty;
-                    }
-
-                    if (number.Length == 2)
-                    {
-                        return waypoint + " " + number;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-                return string.Empty;
-            }
-
             return string.Empty;
         }
+
 
         public SRResult ExtractGrammar(ResultType rt, string grammarName, string s, string lang)
         {
@@ -518,7 +460,7 @@ namespace MiniAirwaysVoiceControl
                 if (gt == GrammarType.AircraftVectorToDestinationWaypoint)
                     waypoint = MatchNamedWaypointPattern(s);
                 else if (gt == GrammarType.AircraftVectorToNormalWaypoint)
-                    waypoint = MatchNormalWaypointPatternEN(s);
+                    waypoint = MatchNormalWaypointPattern(s);
             }
             else if (lang == "zh-CN")
             {
@@ -529,7 +471,7 @@ namespace MiniAirwaysVoiceControl
                 if (gt == GrammarType.AircraftVectorToDestinationWaypoint)
                     waypoint = MatchNamedWaypointPattern(s);
                 else if (gt == GrammarType.AircraftVectorToNormalWaypoint)
-                    waypoint = MatchNormalWaypointPatternCN(s);
+                    waypoint = MatchNormalWaypointPattern(s);
             }
             else
             {
