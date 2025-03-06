@@ -499,7 +499,7 @@ namespace MiniAirwaysVoiceControl
             int lastIndex = 0;
 
             // Regex to match tokens: {element}, <choice1|choice2>, [optional]
-            Regex pattern = new Regex(@"\{[^\}]+\}|\<[^\>]+\>|$$[^$$]+\]");
+            Regex pattern = new Regex(@"\{[^\}]+\}|\<[^\>]+\>|\[[^\]]+\]");
 
             MatchCollection matches = pattern.Matches(csr);
 
